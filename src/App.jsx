@@ -299,44 +299,40 @@ export default function App() {
     if (authStatus === 'unauthenticated') {
         return (
             <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-slate-950 px-6 text-white overflow-hidden">
-                {/* Background Accents */}
-                <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-indigo-600/20 blur-[120px]" />
-                <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-purple-600/20 blur-[120px]" />
+                <Background />
 
-                <div className="z-10 w-full max-w-md space-y-8 text-center">
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-indigo-600 to-purple-600 shadow-2xl shadow-indigo-500/40">
-                            <Film className="h-10 w-10 text-white" />
+                <div className="z-10 w-full max-w-md space-y-12 text-center">
+                    <div className="flex flex-col items-center gap-6">
+                        <div className="group relative">
+                            <div className="absolute -inset-1 rounded-3xl bg-gradient-to-tr from-indigo-600 to-purple-600 opacity-75 blur transition duration-1000 group-hover:opacity-100 group-hover:duration-200"></div>
+                            <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-slate-900 shadow-2xl">
+                                <Film className="h-12 w-12 text-indigo-500" />
+                            </div>
                         </div>
-                        <h1 className="text-4xl font-black tracking-tight">CineSphere</h1>
-                        <p className="text-slate-400">Discover your next favorite story. Track your cinematic journey in one place.</p>
+                        <div className="space-y-2">
+                            <h1 className="text-5xl font-black tracking-tighter text-white">CINE<span className="text-indigo-500">SPHERE</span></h1>
+                            <p className="text-lg font-medium text-slate-400">Your cinematic journey starts here.</p>
+                        </div>
                     </div>
 
                     <div className="space-y-4 pt-4">
                         <button
                             onClick={handleGoogleLogin}
-                            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-6 py-4 font-bold text-slate-950 transition-transform hover:scale-[1.02] active:scale-95"
+                            className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-white px-6 py-4 font-bold text-slate-950 transition-all hover:scale-[1.02] active:scale-95"
                         >
-                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/pwa_apple_color.png" className="hidden h-5 w-5" alt="" />
-                            {/* Manual SVG for Google */}
-                            <svg className="h-5 w-5" viewBox="0 0 24 24">
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-100 to-transparent transition-transform duration-500 -translate-x-full group-hover:translate-x-full" />
+                            <svg className="relative h-5 w-5" viewBox="0 0 24 24">
                                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
                                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                             </svg>
-                            Sign in with Google
+                            <span className="relative">Sign in with Google</span>
                         </button>
-
-                        <div className="flex items-center gap-4 py-2 text-slate-600">
-                            <hr className="flex-1 border-slate-800" />
-                            <span className="text-xs font-bold uppercase tracking-widest">or</span>
-                            <hr className="flex-1 border-slate-800" />
-                        </div>
 
                         <button
                             onClick={handleGuestLogin}
-                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-4 font-bold text-slate-300 ring-1 ring-slate-800 transition-all hover:bg-slate-800"
+                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900/50 px-6 py-4 font-bold text-slate-300 ring-1 ring-slate-800 transition-all hover:bg-slate-800 hover:ring-slate-700"
                         >
                             Continue as Guest
                         </button>
@@ -344,9 +340,13 @@ export default function App() {
 
                     {error && <p className="text-sm font-medium text-red-400">{error}</p>}
 
-                    <p className="text-xs text-slate-500">
-                        By continuing, you agree to CineSphere's Terms & Privacy Policy.
-                    </p>
+                    <div className="flex flex-col items-center gap-4 text-xs text-slate-500">
+                        <div className="flex gap-4">
+                            <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Secure Auth</span>
+                            <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3" /> AI Powered</span>
+                        </div>
+                        <p>By continuing, you agree to CineSphere's Terms & Privacy Policy.</p>
+                    </div>
                 </div>
             </div>
         );
@@ -354,7 +354,9 @@ export default function App() {
 
     // --- Main App Screen (Authenticated) ---
     return (
-        <div className="min-h-screen w-full bg-slate-950 font-sans text-slate-100">
+        <div className="relative min-h-screen w-full bg-slate-950 font-sans text-slate-100 selection:bg-indigo-500/30">
+            <Background />
+
             {/* Navigation */}
             <nav className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
@@ -388,39 +390,67 @@ export default function App() {
                 </div>
             </nav>
 
-            <main className="mx-auto max-w-7xl px-6 py-8">
+            <main className="relative z-10 mx-auto max-w-7xl px-6 py-8">
                 {activeTab === 'discover' && (
-                    <div className="space-y-12">
-                        <div className="relative max-w-2xl">
-                            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-                            <input
-                                type="text"
-                                placeholder="Search movies..."
-                                className="w-full rounded-2xl border-none bg-slate-900 py-4 pl-12 pr-4 text-slate-100 ring-1 ring-slate-800 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
+                    <div className="space-y-16">
+                        {/* Search Bar - Floating */}
+                        <div className="flex flex-col items-center gap-8 py-8 md:py-16">
+                            <div className="text-center space-y-4 max-w-2xl px-4">
+                                <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white uppercase italic">Explore the <span className="text-indigo-500 text-glow">Multiverse</span> of Cinema</h1>
+                                <p className="text-slate-400 font-medium">Personalized recommendations powered by real-time TMDB data.</p>
+                            </div>
+                            <div className="relative w-full max-w-3xl group">
+                                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 opacity-20 blur transition duration-500 group-focus-within:opacity-50 group-hover:opacity-40" />
+                                <div className="relative flex items-center bg-slate-900 shadow-2xl rounded-2xl overflow-hidden ring-1 ring-white/10">
+                                    <Search className="absolute left-5 h-6 w-6 text-indigo-500" />
+                                    <input
+                                        type="text"
+                                        placeholder="What are you in the mood for?"
+                                        className="w-full bg-transparent py-6 pl-16 pr-4 text-xl text-white focus:outline-none placeholder:text-slate-600"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                    />
+                                    {search && (
+                                        <button onClick={() => setSearch('')} className="absolute right-4 p-2 text-slate-500 hover:text-white transition-colors">
+                                            <X className="h-5 w-5" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
                         {isDataLoading && (
                             <div className="flex flex-col items-center justify-center py-20">
-                                <Film className="h-10 w-10 animate-spin text-indigo-500 mb-4" />
-                                <p className="text-slate-500 font-medium">Curating your library...</p>
+                                <div className="relative h-20 w-20 flex items-center justify-center">
+                                    <Film className="h-10 w-10 animate-spin text-indigo-500 absolute" />
+                                    <div className="h-20 w-20 rounded-full border-t-2 border-indigo-500/30 animate-spin" />
+                                </div>
+                                <p className="mt-8 text-indigo-400 font-bold uppercase tracking-[0.2em] text-xs">Accessing Archives...</p>
                             </div>
                         )}
 
                         {!isDataLoading && !search && recommendations.length > 0 && (
-                            <section className="space-y-4">
-                                <h2 className="flex items-center gap-2 text-2xl font-bold text-white"><Flame className="h-6 w-6 text-orange-500" /> Recommended</h2>
-                                <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                                    {recommendations.slice(0, 5).map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
+                            <section className="space-y-8">
+                                <HeroCard movie={recommendations[0]} onClick={() => setSelectedMovie(recommendations[0])} />
+
+                                <div className="space-y-6 pt-12">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="flex items-center gap-3 text-3xl font-black text-white italic tracking-tight underline decoration-indigo-500/50 underline-offset-8">
+                                            <Flame className="h-8 w-8 text-indigo-500" /> TOP PICKS FOR YOU
+                                        </h2>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                                        {recommendations.slice(1, 6).map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
+                                    </div>
                                 </div>
                             </section>
                         )}
 
-                        <section className="space-y-4">
-                            <h2 className="text-2xl font-bold text-white">{search ? 'Results' : 'Trending Now'}</h2>
-                            <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                        <section className="space-y-6 pb-20">
+                            <h2 className="text-3xl font-black text-white italic tracking-tight underline decoration-slate-800 underline-offset-8">
+                                {search ? `RESULTS FOR "${search}"` : 'TRENDING GLOBALLY'}
+                            </h2>
+                            <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                                 {filteredMovies.map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
                             </div>
                         </section>
@@ -551,10 +581,54 @@ export default function App() {
 }
 
 // --- Components ---
+function Background() {
+    return (
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+            {/* Dark radial glow */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(15,23,42,1)_0%,rgba(2,6,23,1)_100%)]" />
+
+            {/* Animated Bokeh Blobs */}
+            <div className="absolute top-0 -left-[10%] h-[1000px] w-[1000px] rounded-full bg-indigo-600/10 blur-[150px] animate-bokeh" />
+            <div className="absolute bottom-0 -right-[10%] h-[1000px] w-[1000px] rounded-full bg-purple-600/10 blur-[150px] animate-bokeh-reverse" />
+            <div className="absolute top-1/2 left-1/2 h-[800px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/5 blur-[150px] animate-bokeh" />
+
+            {/* Film Grain/Noise Overlay */}
+            <div className="absolute inset-0 opacity-[0.04] animate-grain bg-grain mix-blend-overlay" />
+
+            {/* Scanlines Effect */}
+            <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.02),rgba(0,255,0,0.01),rgba(0,0,255,0.02))] bg-[length:100%_4px,4px_100%]" />
+        </div>
+    );
+}
+
+function HeroCard({ movie, onClick }) {
+    return (
+        <div onClick={onClick} className="group relative aspect-[21/9] w-full overflow-hidden rounded-[2.5rem] cursor-pointer ring-1 ring-white/10 shadow-2xl transition-all hover:scale-[1.01] hover:shadow-indigo-500/10 active:scale-100">
+            <div className="absolute inset-0 z-10 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+            {movie.backdrop && <img src={movie.backdrop.replace('w500', 'original')} className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-105" alt={movie.title} />}
+
+            <div className="absolute bottom-0 left-0 z-20 p-12 space-y-4 max-w-3xl">
+                <div className="flex items-center gap-3">
+                    <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest italic">Featured</span>
+                    <span className="flex items-center gap-1 text-yellow-500 font-bold"><Star className="h-4 w-4 fill-yellow-500" /> {movie.rating}</span>
+                    <span className="text-slate-400 font-bold">{movie.year}</span>
+                </div>
+                <h1 className="text-6xl font-black text-white italic tracking-tighter uppercase leading-none">{movie.title}</h1>
+                <p className="text-slate-300 text-lg line-clamp-2 md:w-3/4 font-medium opacity-80">{movie.plot}</p>
+                <div className="flex gap-4 pt-4">
+                    <button className="bg-white text-slate-950 px-8 py-3 rounded-2xl font-black tracking-tight uppercase hover:bg-slate-100 transition-colors">Details</button>
+                    <button className="glass-panel text-white px-8 py-3 rounded-2xl font-black tracking-tight uppercase hover:bg-white/10 transition-colors">Watchlist</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function NavBtn({ icon, label, active, onClick }) {
     return (
-        <button onClick={onClick} className={`flex items-center gap-2 text-sm font-semibold transition-colors ${active ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-200'}`}>
+        <button onClick={onClick} className={`relative px-4 py-2 flex items-center gap-2 text-sm font-black tracking-tight uppercase transition-all ${active ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}>
             {icon} {label}
+            {active && <div className="absolute -bottom-1 left-4 right-4 h-1 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]" />}
         </button>
     );
 }
@@ -563,17 +637,16 @@ function PosterImage({ src, alt, className }) {
     const [status, setStatus] = useState('loading'); // loading, loaded, error
 
     return (
-        <div className="relative h-full w-full flex items-center justify-center bg-slate-900">
+        <div className="relative h-full w-full flex items-center justify-center bg-slate-900 shadow-inner">
             {status !== 'loaded' && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
                     <Film className={`h-8 w-8 text-slate-700 ${status === 'loading' ? 'animate-pulse' : ''}`} />
-                    {status === 'error' && <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-600">{alt}</p>}
                 </div>
             )}
             <img
                 src={src}
                 alt={alt}
-                className={`${className} ${status === 'loaded' ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500`}
+                className={`${className} ${status === 'loaded' ? 'opacity-100' : 'opacity-0'} transition-opacity duration-700`}
                 onLoad={() => setStatus('loaded')}
                 onError={() => setStatus('error')}
             />
@@ -583,17 +656,34 @@ function PosterImage({ src, alt, className }) {
 
 function MovieCard({ movie, onClick }) {
     return (
-        <div onClick={onClick} className="group cursor-pointer space-y-3">
-            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl bg-slate-900 transition-all group-hover:-translate-y-2 group-hover:ring-4 group-hover:ring-indigo-500/30">
+        <div onClick={onClick} className="group cursor-pointer space-y-4">
+            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-3xl bg-slate-900 transition-all duration-500 hover:scale-[1.03] active:scale-95 shadow-lg group-hover:shadow-indigo-500/20 ring-1 ring-white/5 group-hover:ring-indigo-500/50">
                 <PosterImage
                     src={movie.poster}
                     alt={movie.title}
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-110"
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="absolute bottom-4 inset-x-4">
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-400 tracking-wider bg-slate-900/80 backdrop-blur-md px-2 py-1 rounded w-fit italic">
+                            {movie.genres[0]}
+                        </div>
+                    </div>
+                </div>
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                    <div className="bg-slate-900/90 backdrop-blur-md p-2 rounded-xl border border-white/10 text-yellow-500 flex items-center gap-1">
+                        <Star className="h-3 w-3 fill-yellow-500" />
+                        <span className="text-[10px] font-bold">{movie.rating}</span>
+                    </div>
+                </div>
             </div>
-            <div>
-                <h3 className="line-clamp-1 font-bold text-white group-hover:text-indigo-400">{movie.title}</h3>
-                <p className="text-xs text-slate-500">{movie.year} • {movie.genres[0]}</p>
+            <div className="px-1">
+                <h3 className="line-clamp-1 text-base font-black text-white italic tracking-tight uppercase group-hover:text-indigo-400 transition-colors">{movie.title}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">{movie.year}</span>
+                    <div className="h-1 w-1 rounded-full bg-slate-700" />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">{movie.genres[0]}</span>
+                </div>
             </div>
         </div>
     );

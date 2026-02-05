@@ -5,6 +5,7 @@
 @layer base {
   :root {
     color-scheme: dark;
+    --brand-indigo: 99 102 241;
   }
 
   html {
@@ -15,28 +16,40 @@
   body {
     @apply bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-indigo-200;
     scrollbar-gutter: stable;
+    overflow-x: hidden;
   }
 }
 
 @layer utilities {
+  .bg-grain {
+    background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+    filter: contrast(170%) brightness(1000%);
+  }
 
-  /* Custom Scrollbar for Chrome, Safari and Edge */
+  .text-glow {
+    text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+  }
+
+  .glass-panel {
+    @apply bg-slate-900/60 backdrop-blur-xl border border-white/5;
+  }
+
+  /* Custom Scrollbar */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-slate-950;
+    @apply bg-transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-800 rounded-full border-2 border-slate-950 hover:bg-slate-700 transition-colors;
+    @apply bg-slate-800 rounded-full hover:bg-slate-700 transition-colors;
   }
 
-  /* Custom Scrollbar for Firefox */
   * {
     scrollbar-width: thin;
-    scrollbar-color: theme('colors.slate.800') theme('colors.slate.950');
+    scrollbar-color: theme('colors.slate.800') transparent;
   }
 }
