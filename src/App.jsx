@@ -37,10 +37,12 @@ import {
 import {
     getAuth,
     signInAnonymously,
-    signInWithCustomToken,
     onAuthStateChanged,
     signInWithPopup,
     GoogleAuthProvider,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    updateProfile as updateAuthProfile,
     signOut
 } from 'firebase/auth';
 
@@ -115,6 +117,13 @@ export default function App() {
     const [activeTab, setActiveTab] = useState("discover");
     const [error, setError] = useState(null);
     const [isDataLoading, setIsDataLoading] = useState(true);
+
+    // Email Auth States
+    const [authMode, setAuthMode] = useState('landing'); // landing, login, register
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [displayName, setDisplayName] = useState('');
+    const [isAuthLoading, setIsAuthLoading] = useState(false);
 
     if (missingEnv.length > 0) {
         return (
@@ -256,6 +265,34 @@ export default function App() {
         }
     };
 
+    const handleEmailRegister = async (e) => {
+        e.preventDefault();
+        setError(null);
+        setIsAuthLoading(true);
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            await updateAuthProfile(userCredential.user, { displayName });
+            setUserProfile(prev => ({ ...prev, name: displayName }));
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsAuthLoading(false);
+        }
+    };
+
+    const handleEmailLogin = async (e) => {
+        e.preventDefault();
+        setError(null);
+        setIsAuthLoading(true);
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsAuthLoading(false);
+        }
+    };
+
     const handleLogout = async () => {
         try {
             await signOut(auth);
@@ -337,52 +374,125 @@ export default function App() {
             <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-slate-950 px-6 text-white overflow-hidden">
                 <Background showMarquee={true} marqueePosters={trendingPosters} />
 
-                <div className="z-10 w-full max-w-md space-y-12 text-center">
+                <div className="z-10 w-full max-w-md space-y-8 text-center">
                     <div className="flex flex-col items-center gap-6">
                         <div className="group relative">
                             <div className="absolute -inset-1 rounded-3xl bg-gradient-to-tr from-indigo-600 to-purple-600 opacity-75 blur transition duration-1000 group-hover:opacity-100 group-hover:duration-200"></div>
-                            <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-slate-900 shadow-2xl">
-                                <Film className="h-12 w-12 text-indigo-500" />
+                            <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-900 shadow-2xl">
+                                <Film className="h-10 w-10 text-indigo-500" />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <h1 className="text-5xl font-black tracking-tighter text-white">CINE<span className="text-indigo-500">SPHERE</span></h1>
-                            <p className="text-lg font-medium text-slate-400">Your cinematic journey starts here.</p>
+                            <h1 className="text-4xl font-black tracking-tighter text-white uppercase italic">CINE<span className="text-indigo-500 text-glow">SPHERE</span></h1>
+                            <p className="text-sm font-medium text-slate-400">Your cinematic journey starts here.</p>
                         </div>
                     </div>
 
-                    <div className="space-y-4 pt-4">
-                        <button
-                            onClick={handleGoogleLogin}
-                            className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-white px-6 py-4 font-bold text-slate-950 transition-all hover:scale-[1.02] active:scale-95"
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-100 to-transparent transition-transform duration-500 -translate-x-full group-hover:translate-x-full" />
-                            <svg className="relative h-5 w-5" viewBox="0 0 24 24">
-                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                            </svg>
-                            <span className="relative">Sign in with Google</span>
-                        </button>
+                    <div className="glass-panel overflow-hidden rounded-3xl p-8 shadow-2xl border border-white/5 bg-slate-900/40 backdrop-blur-xl">
+                        {authMode === 'landing' && (
+                            <div className="space-y-4">
+                                <button
+                                    onClick={handleGoogleLogin}
+                                    className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-white px-6 py-4 font-bold text-slate-950 transition-all hover:scale-[1.02] active:scale-95"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-100 to-transparent transition-transform duration-500 -translate-x-full group-hover:translate-x-full" />
+                                    <svg className="relative h-5 w-5" viewBox="0 0 24 24">
+                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                    </svg>
+                                    <span className="relative">Sign in with Google</span>
+                                </button>
 
-                        <button
-                            onClick={handleGuestLogin}
-                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900/50 px-6 py-4 font-bold text-slate-300 ring-1 ring-slate-800 transition-all hover:bg-slate-800 hover:ring-slate-700"
-                        >
-                            Continue as Guest
-                        </button>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        onClick={() => setAuthMode('register')}
+                                        className="flex items-center justify-center gap-2 rounded-2xl bg-indigo-600/10 px-6 py-4 font-bold text-indigo-400 ring-1 ring-indigo-500/30 transition-all hover:bg-indigo-600/20"
+                                    >
+                                        Register
+                                    </button>
+                                    <button
+                                        onClick={() => setAuthMode('login')}
+                                        className="flex items-center justify-center gap-2 rounded-2xl bg-white/5 px-6 py-4 font-bold text-white ring-1 ring-white/10 transition-all hover:bg-white/10"
+                                    >
+                                        Sign In
+                                    </button>
+                                </div>
+
+                                <button
+                                    onClick={handleGuestLogin}
+                                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900/50 px-6 py-4 font-bold text-slate-400 transition-all hover:text-white"
+                                >
+                                    Continue as Guest
+                                </button>
+                            </div>
+                        )}
+
+                        {(authMode === 'login' || authMode === 'register') && (
+                            <form onSubmit={authMode === 'login' ? handleEmailLogin : handleEmailRegister} className="space-y-4">
+                                {authMode === 'register' && (
+                                    <div className="space-y-1 text-left">
+                                        <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Full Name</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-indigo-500/50"
+                                            value={displayName}
+                                            onChange={(e) => setDisplayName(e.target.value)}
+                                        />
+                                    </div>
+                                )}
+                                <div className="space-y-1 text-left">
+                                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Email</label>
+                                    <input
+                                        type="email"
+                                        required
+                                        className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-indigo-500/50"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-1 text-left">
+                                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Password</label>
+                                    <input
+                                        type="password"
+                                        required
+                                        className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-indigo-500/50"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={isAuthLoading}
+                                    className="w-full rounded-2xl bg-indigo-600 py-4 font-bold text-white shadow-lg transition-all hover:bg-indigo-500 hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+                                >
+                                    {isAuthLoading ? 'Please wait...' : (authMode === 'login' ? 'Sign In' : 'Create Account')}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setAuthMode('landing')}
+                                    className="text-sm font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                    Back to Options
+                                </button>
+                            </form>
+                        )}
                     </div>
 
-                    {error && <p className="text-sm font-medium text-red-400">{error}</p>}
-
-                    <div className="flex flex-col items-center gap-4 text-xs text-slate-500">
-                        <div className="flex gap-4">
-                            {/* <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Secure Auth</span> */}
-                            {/* <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3" /> AI Powered</span> */}
+                    {error && (
+                        <div className="flex items-center gap-2 rounded-2xl bg-red-500/10 p-4 text-xs font-bold text-red-400 ring-1 ring-red-500/20">
+                            <Info className="h-4 w-4 shrink-0" />
+                            {error}
                         </div>
-                        <p>By continuing, you agree to CineSphere's Terms & Privacy Policy.</p>
-                    </div>
+                    )}
+
+                    <p className="text-xs text-slate-600">
+                        By continuing, you agree to CineSphere's Terms & Privacy Policy.
+                    </p>
                 </div>
             </div>
         );
