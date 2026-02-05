@@ -767,14 +767,14 @@ function Background({ showMarquee = false, marqueePosters = [] }) {
                                 {[...colImages, ...colImages, ...colImages].map((img, idx) => (
                                     <div key={idx} className="relative group/poster flex flex-col items-center">
                                         {/* Main Card */}
-                                        <div className="w-44 aspect-[2/3] rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 relative z-10">
+                                        <div className="w-32 aspect-[2/3] rounded-xl overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.5)] ring-1 ring-white/10 relative z-10 transition-transform duration-500 group-hover/poster:scale-110">
                                             <img src={img} className="h-full w-full object-cover" alt="" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/20 via-transparent to-transparent" />
                                         </div>
 
                                         {/* Premium Reflection Effect */}
-                                        <div className="absolute top-[calc(100%+8px)] w-44 aspect-[2/3] transform -scale-y-100 opacity-30 blur-[2px] z-0">
-                                            <img src={img} className="h-full w-full object-cover rounded-2xl" alt="" />
+                                        <div className="absolute top-[calc(100%+6px)] w-32 aspect-[2/3] transform -scale-y-100 opacity-30 blur-[2px] z-0">
+                                            <img src={img} className="h-full w-full object-cover rounded-xl" alt="" />
                                             {/* Mask to fade reflection */}
                                             <div className="absolute inset-0 bg-gradient-to-b from-[#090e1a] via-[#090e1a]/40 to-transparent" />
                                         </div>
