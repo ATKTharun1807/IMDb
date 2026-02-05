@@ -63,14 +63,14 @@ const appId = 'cinesphere-app';
 
 // --- Mock Movie Dataset (Simulating IMDb CSV) ---
 const MOCK_MOVIES = [
-    { id: 1, title: "Inception", year: 2010, rating: 8.8, genres: ["Sci-Fi", "Action"], ageRating: "PG-13", poster: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=400", plot: "A thief who steals corporate secrets through the use of dream-sharing technology." },
-    { id: 2, title: "The Godfather", year: 1972, rating: 9.2, genres: ["Crime", "Drama"], ageRating: "R", poster: "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=400", plot: "The aging patriarch of an organized crime dynasty transfers control to his reluctant son." },
-    { id: 3, title: "Spirited Away", year: 2001, rating: 8.6, genres: ["Animation", "Adventure"], ageRating: "PG", poster: "https://images.unsplash.com/photo-1607604276483-c2444838b930?q=80&w=400", plot: "A young girl wanders into a world ruled by gods, witches, and spirits." },
-    { id: 4, title: "The Dark Knight", year: 2008, rating: 9.0, genres: ["Action", "Crime"], ageRating: "PG-13", poster: "https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=400", plot: "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham." },
-    { id: 5, title: "Parasite", year: 2019, rating: 8.5, genres: ["Drama", "Thriller"], ageRating: "R", poster: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=400", plot: "Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan." },
-    { id: 6, title: "Toy Story", year: 1995, rating: 8.3, genres: ["Animation", "Family"], ageRating: "G", poster: "https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=400", plot: "A cowboy doll is profoundly threatened and jealous when a new spaceman figure supplants him." },
-    { id: 7, title: "Interstellar", year: 2014, rating: 8.7, genres: ["Sci-Fi", "Drama"], ageRating: "PG-13", poster: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=400", plot: "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival." },
-    { id: 8, title: "Pulp Fiction", year: 1994, rating: 8.9, genres: ["Crime", "Drama"], ageRating: "R", poster: "https://images.unsplash.com/photo-1594908900066-3f47337549d8?q=80&w=400", plot: "The lives of two mob hitmen, a boxer, a gangster and his wife, and a pair of diner bandits intertwine." },
+    { id: 1, title: "Inception", year: 2010, rating: 8.8, genres: ["Sci-Fi", "Action"], ageRating: "PG-13", poster: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?auto=format&fit=crop&q=80&w=800", plot: "A thief who steals corporate secrets through the use of dream-sharing technology." },
+    { id: 2, title: "The Godfather", year: 1972, rating: 9.2, genres: ["Crime", "Drama"], ageRating: "R", poster: "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?auto=format&fit=crop&q=80&w=800", plot: "The aging patriarch of an organized crime dynasty transfers control to his reluctant son." },
+    { id: 3, title: "Spirited Away", year: 2001, rating: 8.6, genres: ["Animation", "Adventure"], ageRating: "PG", poster: "https://images.unsplash.com/photo-1607604276483-c2444838b930?auto=format&fit=crop&q=80&w=800", plot: "A young girl wanders into a world ruled by gods, witches, and spirits." },
+    { id: 4, title: "The Dark Knight", year: 2008, rating: 9.0, genres: ["Action", "Crime"], ageRating: "PG-13", poster: "https://images.unsplash.com/photo-1509248961158-e54f6934749c?auto=format&fit=crop&q=80&w=800", plot: "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham." },
+    { id: 5, title: "Parasite", year: 2019, rating: 8.5, genres: ["Drama", "Thriller"], ageRating: "R", poster: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=800", plot: "Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan." },
+    { id: 6, title: "Toy Story", year: 1995, rating: 8.3, genres: ["Animation", "Family"], ageRating: "G", poster: "https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&q=80&w=800", plot: "A cowboy doll is profoundly threatened and jealous when a new spaceman figure supplants him." },
+    { id: 7, title: "Interstellar", year: 2014, rating: 8.7, genres: ["Sci-Fi", "Drama"], ageRating: "PG-13", poster: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=800", plot: "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival." },
+    { id: 8, title: "Pulp Fiction", year: 1994, rating: 8.9, genres: ["Crime", "Drama"], ageRating: "R", poster: "https://images.unsplash.com/photo-1594908900066-3f47337549d8?auto=format&fit=crop&q=80&w=800", plot: "The lives of two mob hitmen, a boxer, a gangster and his wife, and a pair of diner bandits intertwine." },
 ];
 
 const GENRES = ["Action", "Sci-Fi", "Drama", "Crime", "Animation", "Thriller", "Adventure", "Family"];
@@ -433,8 +433,8 @@ export default function App() {
                     <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setSelectedMovie(null)} />
                     <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-slate-900 ring-1 ring-slate-800 flex flex-col md:flex-row">
                         <button onClick={() => setSelectedMovie(null)} className="absolute right-6 top-6 z-10 rounded-full bg-black/40 p-2 text-white"><X className="h-5 w-5" /></button>
-                        <div className="h-64 w-full md:h-auto md:w-1/3">
-                            <img src={selectedMovie.poster} className="h-full w-full object-cover" />
+                        <div className="h-64 w-full md:h-auto md:w-1/3 overflow-hidden bg-slate-950 flex items-center justify-center">
+                            <PosterImage src={selectedMovie.poster} alt={selectedMovie.title} className="h-full w-full object-cover" />
                         </div>
                         <div className="flex-1 p-8">
                             <h2 className="text-3xl font-black text-white">{selectedMovie.title}</h2>
@@ -475,11 +475,37 @@ function NavBtn({ icon, label, active, onClick }) {
     );
 }
 
+function PosterImage({ src, alt, className }) {
+    const [status, setStatus] = useState('loading'); // loading, loaded, error
+
+    return (
+        <div className="relative h-full w-full flex items-center justify-center bg-slate-900">
+            {status !== 'loaded' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                    <Film className={`h-8 w-8 text-slate-700 ${status === 'loading' ? 'animate-pulse' : ''}`} />
+                    {status === 'error' && <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-600">{alt}</p>}
+                </div>
+            )}
+            <img
+                src={src}
+                alt={alt}
+                className={`${className} ${status === 'loaded' ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500`}
+                onLoad={() => setStatus('loaded')}
+                onError={() => setStatus('error')}
+            />
+        </div>
+    );
+}
+
 function MovieCard({ movie, onClick }) {
     return (
         <div onClick={onClick} className="group cursor-pointer space-y-3">
             <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl bg-slate-900 transition-all group-hover:-translate-y-2 group-hover:ring-4 group-hover:ring-indigo-500/30">
-                <img src={movie.poster} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <PosterImage
+                    src={movie.poster}
+                    alt={movie.title}
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
             </div>
             <div>
                 <h3 className="line-clamp-1 font-bold text-white group-hover:text-indigo-400">{movie.title}</h3>
