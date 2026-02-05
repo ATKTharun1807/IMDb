@@ -735,12 +735,12 @@ function Background({ showMarquee = false }) {
     ];
 
     return (
-        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-slate-950">
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#0a0f1d]">
             <NexusBackground />
 
             {/* Show Marquee Only on Login */}
             {showMarquee && (
-                <div className="absolute inset-0 z-0 opacity-20 flex gap-4 rotate-12 scale-125">
+                <div className="absolute inset-0 z-0 opacity-30 flex gap-4 rotate-12 scale-125">
                     {[1, 2, 3, 4, 5].map((col) => (
                         <div key={col} className={`flex flex-col gap-4 ${col % 2 === 0 ? 'animate-marquee' : 'animate-marquee-reverse'}`}>
                             {[...marqueeImages, ...marqueeImages, ...marqueeImages].map((img, idx) => (
@@ -751,24 +751,24 @@ function Background({ showMarquee = false }) {
                 </div>
             )}
 
-            {/* Base Radial Glow */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(15,23,42,0.8)_0%,rgba(2,6,23,1)_100%)] z-10" />
+            {/* Base Radial Glow - Lightened */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(30,41,59,0.4)_0%,rgba(10,15,30,0.9)_100%)] z-10" />
 
-            {/* wandering light sources */}
-            <div className="absolute top-[10%] left-[10%] h-[800px] w-[800px] rounded-full bg-indigo-600/10 blur-[120px] animate-wander z-20" />
-            <div className="absolute top-[40%] right-[10%] h-[700px] w-[700px] rounded-full bg-purple-600/10 blur-[120px] animate-wander [animation-delay:-5s] z-20" />
-            <div className="absolute bottom-[10%] left-[30%] h-[600px] w-[600px] rounded-full bg-blue-600/10 blur-[120px] animate-wander [animation-delay:-12s] z-20" />
+            {/* wandering light sources - Increased opacity */}
+            <div className="absolute top-[10%] left-[10%] h-[800px] w-[800px] rounded-full bg-indigo-500/15 blur-[120px] animate-wander z-20" />
+            <div className="absolute top-[40%] right-[10%] h-[700px] w-[700px] rounded-full bg-purple-500/15 blur-[120px] animate-wander [animation-delay:-5s] z-20" />
+            <div className="absolute bottom-[10%] left-[30%] h-[600px] w-[600px] rounded-full bg-blue-500/15 blur-[120px] animate-wander [animation-delay:-12s] z-20" />
 
-            {/* Drifting Particles/Stars */}
+            {/* Drifting Particles/Stars - Increased opacity */}
             <div className="absolute inset-0 z-30">
-                {[...Array(20)].map((_, i) => (
+                {[...Array(25)].map((_, i) => (
                     <div
                         key={i}
                         className="absolute h-px w-px bg-white rounded-full animate-drift"
                         style={{
                             top: `${Math.random() * 100}%`,
                             left: `${Math.random() * 100}%`,
-                            opacity: Math.random() * 0.5,
+                            opacity: 0.4 + Math.random() * 0.4,
                             animationDuration: `${30 + Math.random() * 60}s`,
                             animationDelay: `-${Math.random() * 60}s`
                         }}
@@ -777,13 +777,13 @@ function Background({ showMarquee = false }) {
             </div>
 
             {/* Film Grain/Noise Overlay */}
-            <div className="absolute inset-0 opacity-[0.05] animate-grain bg-grain mix-blend-overlay z-40" />
+            <div className="absolute inset-0 opacity-[0.07] animate-grain bg-grain mix-blend-overlay z-40" />
 
             {/* Cinematic Scanlines */}
-            <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px] z-50" />
+            <div className="absolute inset-0 pointer-events-none opacity-10 bg-[linear-gradient(rgba(255,255,255,0.02)_50%,rgba(0,0,0,0.05)_50%)] bg-[length:100%_4px] z-50" />
 
-            {/* Vignette */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(2,6,23,0.6)_100%)] z-50" />
+            {/* Vignette - Subtle */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_20%,rgba(2,6,23,0.4)_100%)] z-50" />
         </div>
     );
 }
