@@ -44,9 +44,20 @@ import {
     signOut
 } from 'firebase/auth';
 
+// --- Environment Variable Validation ---
+const requiredEnv = [
+    'VITE_FIREBASE_API_KEY',
+    'VITE_TMDB_API_KEY'
+];
+const missingEnv = requiredEnv.filter(key => !import.meta.env[key]);
+
+if (missingEnv.length > 0 && import.meta.env.MODE === 'production') {
+    console.error(`Missing required environment variables: ${missingEnv.join(', ')}`);
+}
+
 // --- Firebase Configuration ---
 const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "dummy-key",
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
     storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
@@ -104,6 +115,26 @@ export default function App() {
     const [activeTab, setActiveTab] = useState("discover");
     const [error, setError] = useState(null);
     const [isDataLoading, setIsDataLoading] = useState(true);
+
+    if (missingEnv.length > 0) {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-6 text-center text-white">
+                <div className="mb-6 rounded-2xl bg-red-500/10 p-4 ring-1 ring-red-500/50">
+                    <Info className="mx-auto mb-2 h-8 w-8 text-red-500" />
+                    <h2 className="text-xl font-bold">Configuration Missing</h2>
+                    <p className="mt-2 text-slate-400">Please set the following environment variables in your deployment settings:</p>
+                    <ul className="mt-4 flex flex-wrap justify-center gap-2">
+                        {missingEnv.map(env => (
+                            <li key={env} className="rounded-md bg-slate-900 px-3 py-1 text-xs font-mono text-indigo-400 ring-1 ring-slate-800">{env}</li>
+                        ))}
+                    </ul>
+                </div>
+                <p className="max-w-md text-sm text-slate-500">
+                    If you are seeing this on Netlify, go to <b>Site Settings &gt; Environment Variables</b> and add the keys from your .env file.
+                </p>
+            </div>
+        );
+    }
 
     // --- Auth Listeners ---
     useEffect(() => {
