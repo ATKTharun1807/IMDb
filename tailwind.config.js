@@ -12,8 +12,20 @@ export default {
                 'grain': 'grain 8s steps(10) infinite',
                 'float': 'float 6s ease-in-out infinite',
                 'shimmer': 'shimmer 2s linear infinite',
+                'wander': 'wander 40s ease-in-out infinite',
+                'drift': 'drift 60s linear infinite',
             },
             keyframes: {
+                wander: {
+                    '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+                    '25%': { transform: 'translate(10vw, 15vh) scale(1.2) rotate(90deg)' },
+                    '50%': { transform: 'translate(-5vw, 25vh) scale(0.8) rotate(180deg)' },
+                    '75%': { transform: 'translate(-15vw, 5vh) scale(1.1) rotate(270deg)' },
+                },
+                drift: {
+                    '0%': { transform: 'translateX(-20vw) translateY(-10vh) rotate(0deg)' },
+                    '100%': { transform: 'translateX(120vw) translateY(110vh) rotate(360deg)' },
+                },
                 bokeh: {
                     '0%': { transform: 'translate(0, 0) scale(1)' },
                     '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
