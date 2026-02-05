@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-indigo-200;
+    scrollbar-gutter: stable;
+  }
+}
+
+@layer utilities {
+
+  /* Custom Scrollbar for Chrome, Safari and Edge */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-950;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-800 rounded-full border-2 border-slate-950 hover:bg-slate-700 transition-colors;
+  }
+
+  /* Custom Scrollbar for Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.slate.800') theme('colors.slate.950');
+  }
+}
