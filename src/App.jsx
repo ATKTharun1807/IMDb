@@ -46,13 +46,13 @@ import {
 
 // --- Firebase Configuration ---
 const firebaseConfig = {
-    apiKey: "AIzaSyBXJ6FWddxTmhFFUTmFHB2LSt9ZPen0CjY",
-    authDomain: "cinesphere-61fd0.firebaseapp.com",
-    projectId: "cinesphere-61fd0",
-    storageBucket: "cinesphere-61fd0.firebasestorage.app",
-    messagingSenderId: "1042464485794",
-    appId: "1:1042464485794:web:80d9e05d0506c8a5d1c2fb",
-    measurementId: "G-EWX3LWSTV9"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
@@ -61,8 +61,33 @@ const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 const appId = 'cinesphere-app';
 
-// --- Large Movie Dataset ---
+// --- TMDB API Configuration ---
+const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
+
 const GENRES = ["Action", "Sci-Fi", "Drama", "Crime", "Animation", "Thriller", "Adventure", "Family", "Comedy", "Horror", "Mystery", "Romance", "Fantasy"];
+const GENRE_MAP = {
+    28: "Action",
+    12: "Adventure",
+    16: "Animation",
+    35: "Comedy",
+    80: "Crime",
+    99: "Documentary",
+    18: "Drama",
+    10751: "Family",
+    14: "Fantasy",
+    36: "History",
+    27: "Horror",
+    10402: "Music",
+    9648: "Mystery",
+    10749: "Romance",
+    878: "Sci-Fi",
+    10770: "TV Movie",
+    53: "Thriller",
+    10752: "War",
+    37: "Western"
+};
 
 export default function App() {
     const [user, setUser] = useState(null);
@@ -97,37 +122,64 @@ export default function App() {
         return () => unsubscribe();
     }, []);
 
-    // --- Fetch Large Movie Dataset ---
+    // --- TMDB Data Fetchers ---
+    const mapTMDBMovie = (m) => ({
+        id: m.id,
+        title: m.title || m.name,
+        year: (m.release_date || m.first_air_date || "").split('-')[0],
+        rating: parseFloat(m.vote_average?.toFixed(1) || 0),
+        genres: m.genre_ids?.map(id => GENRE_MAP[id]).filter(Boolean) || ["Drama"],
+        ageRating: m.adult ? "R" : "PG-13",
+        poster: m.poster_path ? `${TMDB_IMAGE_BASE_URL}${m.poster_path}` : "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=800",
+        backdrop: m.backdrop_path ? `${TMDB_IMAGE_BASE_URL}${m.backdrop_path}` : null,
+        plot: m.overview || "No description available."
+    });
+
+    const fetchTrending = async () => {
+        try {
+            setIsDataLoading(true);
+            const response = await fetch(`${TMDB_BASE_URL}/trending/movie/day?api_key=${TMDB_API_KEY}`);
+            const data = await response.json();
+            setMovies(data.results.map(mapTMDBMovie));
+        } catch (err) {
+            console.error("Failed to fetch trending movies:", err);
+            setError("Failed to load trending movies.");
+        } finally {
+            setIsDataLoading(false);
+        }
+    };
+
+    const searchMovies = async (query) => {
+        if (!query) {
+            fetchTrending();
+            return;
+        }
+        try {
+            setIsDataLoading(true);
+            const response = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            setMovies(data.results.map(mapTMDBMovie));
+        } catch (err) {
+            console.error("Search failed:", err);
+        } finally {
+            setIsDataLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchMovies = async () => {
-            try {
-                setIsDataLoading(true);
-                const response = await fetch('/movies.json');
-                const data = await response.json();
-
-                // Map Wikipedia format to App format
-                const mappedMovies = data.map((m, index) => ({
-                    id: index + 1,
-                    title: m.title,
-                    year: m.year,
-                    rating: parseFloat((7 + Math.random() * 2.5).toFixed(1)), // Mock rating
-                    genres: m.genres && m.genres.length > 0 ? m.genres : ["Drama"],
-                    ageRating: m.year > 2000 ? "PG-13" : "PG", // Mock age rating
-                    poster: m.thumbnail || "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=800",
-                    plot: m.extract || "No description available."
-                }));
-
-                setMovies(mappedMovies);
-            } catch (err) {
-                console.error("Failed to fetch movies:", err);
-                setError("Failed to load movie library.");
-            } finally {
-                setIsDataLoading(false);
-            }
-        };
-
-        fetchMovies();
+        fetchTrending();
     }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (search) {
+                searchMovies(search);
+            } else {
+                fetchTrending();
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search]);
 
     // --- Data Sync Logic ---
     useEffect(() => {
@@ -202,13 +254,11 @@ export default function App() {
     }, [movies, userProfile, watchlist]);
 
     const filteredMovies = useMemo(() => {
-        const filtered = movies.filter(m => {
-            const matchesSearch = m.title.toLowerCase().includes(search.toLowerCase());
+        return movies.filter(m => {
             const matchesAge = userProfile.ageSafe ? m.ageRating !== "R" : true;
-            return matchesSearch && matchesAge;
+            return matchesAge;
         });
-        return search ? filtered : filtered.slice(0, 50); // Limit trending to 50
-    }, [movies, search, userProfile.ageSafe]);
+    }, [movies, userProfile.ageSafe]);
 
     // --- Actions ---
     const toggleWatchlist = async (movie, status = "Watchlist") => {
@@ -463,11 +513,14 @@ export default function App() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setSelectedMovie(null)} />
                     <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-slate-900 ring-1 ring-slate-800 flex flex-col md:flex-row">
-                        <button onClick={() => setSelectedMovie(null)} className="absolute right-6 top-6 z-10 rounded-full bg-black/40 p-2 text-white"><X className="h-5 w-5" /></button>
-                        <div className="h-64 w-full md:h-auto md:w-1/3 overflow-hidden bg-slate-950 flex items-center justify-center">
+                        <button onClick={() => setSelectedMovie(null)} className="absolute right-6 top-6 z-10 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 transition-colors"><X className="h-5 w-5" /></button>
+                        <div className="h-64 w-full md:h-auto md:w-2/5 overflow-hidden bg-slate-950">
                             <PosterImage src={selectedMovie.poster} alt={selectedMovie.title} className="h-full w-full object-cover" />
                         </div>
-                        <div className="flex-1 p-8">
+                        <div className="flex-1 p-8 md:p-10">
+                            {selectedMovie.backdrop && (
+                                <div className="absolute inset-x-0 top-0 -z-10 h-64 opacity-20 blur-3xl" style={{ backgroundImage: `url(${selectedMovie.backdrop})`, backgroundSize: 'cover' }} />
+                            )}
                             <h2 className="text-3xl font-black text-white">{selectedMovie.title}</h2>
                             <div className="mt-2 flex items-center gap-3 text-sm text-slate-400">
                                 <span className="font-bold">{selectedMovie.year}</span>
