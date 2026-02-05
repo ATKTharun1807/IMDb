@@ -61,19 +61,8 @@ const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 const appId = 'cinesphere-app';
 
-// --- Mock Movie Dataset (Simulating IMDb CSV) ---
-const MOCK_MOVIES = [
-    { id: 1, title: "Inception", year: 2010, rating: 8.8, genres: ["Sci-Fi", "Action"], ageRating: "PG-13", poster: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?auto=format&fit=crop&q=80&w=800", plot: "A thief who steals corporate secrets through the use of dream-sharing technology." },
-    { id: 2, title: "The Godfather", year: 1972, rating: 9.2, genres: ["Crime", "Drama"], ageRating: "R", poster: "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?auto=format&fit=crop&q=80&w=800", plot: "The aging patriarch of an organized crime dynasty transfers control to his reluctant son." },
-    { id: 3, title: "Spirited Away", year: 2001, rating: 8.6, genres: ["Animation", "Adventure"], ageRating: "PG", poster: "https://images.unsplash.com/photo-1607604276483-c2444838b930?auto=format&fit=crop&q=80&w=800", plot: "A young girl wanders into a world ruled by gods, witches, and spirits." },
-    { id: 4, title: "The Dark Knight", year: 2008, rating: 9.0, genres: ["Action", "Crime"], ageRating: "PG-13", poster: "https://images.unsplash.com/photo-1509248961158-e54f6934749c?auto=format&fit=crop&q=80&w=800", plot: "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham." },
-    { id: 5, title: "Parasite", year: 2019, rating: 8.5, genres: ["Drama", "Thriller"], ageRating: "R", poster: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=800", plot: "Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan." },
-    { id: 6, title: "Toy Story", year: 1995, rating: 8.3, genres: ["Animation", "Family"], ageRating: "G", poster: "https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&q=80&w=800", plot: "A cowboy doll is profoundly threatened and jealous when a new spaceman figure supplants him." },
-    { id: 7, title: "Interstellar", year: 2014, rating: 8.7, genres: ["Sci-Fi", "Drama"], ageRating: "PG-13", poster: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=800", plot: "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival." },
-    { id: 8, title: "Pulp Fiction", year: 1994, rating: 8.9, genres: ["Crime", "Drama"], ageRating: "R", poster: "https://images.unsplash.com/photo-1594908900066-3f47337549d8?auto=format&fit=crop&q=80&w=800", plot: "The lives of two mob hitmen, a boxer, a gangster and his wife, and a pair of diner bandits intertwine." },
-];
-
-const GENRES = ["Action", "Sci-Fi", "Drama", "Crime", "Animation", "Thriller", "Adventure", "Family"];
+// --- Large Movie Dataset ---
+const GENRES = ["Action", "Sci-Fi", "Drama", "Crime", "Animation", "Thriller", "Adventure", "Family", "Comedy", "Horror", "Mystery", "Romance", "Fantasy"];
 
 export default function App() {
     const [user, setUser] = useState(null);
@@ -84,10 +73,12 @@ export default function App() {
         favoriteGenres: ["Sci-Fi", "Drama"],
         ageSafe: false,
     });
+    const [movies, setMovies] = useState([]);
     const [search, setSearch] = useState("");
     const [selectedMovie, setSelectedMovie] = useState(null);
     const [activeTab, setActiveTab] = useState("discover");
     const [error, setError] = useState(null);
+    const [isDataLoading, setIsDataLoading] = useState(true);
 
     // --- Auth Listeners ---
     useEffect(() => {
@@ -95,7 +86,6 @@ export default function App() {
             if (currUser) {
                 setUser(currUser);
                 setAuthStatus('authenticated');
-                // If it's a social login, pre-fill name if missing
                 if (currUser.displayName && !userProfile.name) {
                     setUserProfile(prev => ({ ...prev, name: currUser.displayName }));
                 }
@@ -105,6 +95,38 @@ export default function App() {
             }
         });
         return () => unsubscribe();
+    }, []);
+
+    // --- Fetch Large Movie Dataset ---
+    useEffect(() => {
+        const fetchMovies = async () => {
+            try {
+                setIsDataLoading(true);
+                const response = await fetch('/movies.json');
+                const data = await response.json();
+
+                // Map Wikipedia format to App format
+                const mappedMovies = data.map((m, index) => ({
+                    id: index + 1,
+                    title: m.title,
+                    year: m.year,
+                    rating: parseFloat((7 + Math.random() * 2.5).toFixed(1)), // Mock rating
+                    genres: m.genres && m.genres.length > 0 ? m.genres : ["Drama"],
+                    ageRating: m.year > 2000 ? "PG-13" : "PG", // Mock age rating
+                    poster: m.thumbnail || "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=800",
+                    plot: m.extract || "No description available."
+                }));
+
+                setMovies(mappedMovies);
+            } catch (err) {
+                console.error("Failed to fetch movies:", err);
+                setError("Failed to load movie library.");
+            } finally {
+                setIsDataLoading(false);
+            }
+        };
+
+        fetchMovies();
     }, []);
 
     // --- Data Sync Logic ---
@@ -162,7 +184,8 @@ export default function App() {
 
     // --- Recommendation Logic ---
     const recommendations = useMemo(() => {
-        return MOCK_MOVIES
+        if (!movies.length) return [];
+        return movies
             .filter(movie => {
                 if (watchlist.some(w => w.movieId === movie.id)) return false;
                 if (userProfile.ageSafe && movie.ageRating === "R") return false;
@@ -176,15 +199,16 @@ export default function App() {
                 return { ...movie, score };
             })
             .sort((a, b) => b.score - a.score);
-    }, [userProfile, watchlist]);
+    }, [movies, userProfile, watchlist]);
 
     const filteredMovies = useMemo(() => {
-        return MOCK_MOVIES.filter(m => {
+        const filtered = movies.filter(m => {
             const matchesSearch = m.title.toLowerCase().includes(search.toLowerCase());
             const matchesAge = userProfile.ageSafe ? m.ageRating !== "R" : true;
             return matchesSearch && matchesAge;
         });
-    }, [search, userProfile.ageSafe]);
+        return search ? filtered : filtered.slice(0, 50); // Limit trending to 50
+    }, [movies, search, userProfile.ageSafe]);
 
     // --- Actions ---
     const toggleWatchlist = async (movie, status = "Watchlist") => {
@@ -328,7 +352,14 @@ export default function App() {
                             />
                         </div>
 
-                        {!search && recommendations.length > 0 && (
+                        {isDataLoading && (
+                            <div className="flex flex-col items-center justify-center py-20">
+                                <Film className="h-10 w-10 animate-spin text-indigo-500 mb-4" />
+                                <p className="text-slate-500 font-medium">Curating your library...</p>
+                            </div>
+                        )}
+
+                        {!isDataLoading && !search && recommendations.length > 0 && (
                             <section className="space-y-4">
                                 <h2 className="flex items-center gap-2 text-2xl font-bold text-white"><Flame className="h-6 w-6 text-orange-500" /> Recommended</h2>
                                 <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
