@@ -378,8 +378,8 @@ export default function App() {
 
                     <div className="flex flex-col items-center gap-4 text-xs text-slate-500">
                         <div className="flex gap-4">
-                            <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Secure Auth</span>
-                            <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3" /> AI Powered</span>
+                            {/* <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Secure Auth</span> */}
+                            {/* <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3" /> AI Powered</span> */}
                         </div>
                         <p>By continuing, you agree to CineSphere's Terms & Privacy Policy.</p>
                     </div>
@@ -754,20 +754,30 @@ function Background({ showMarquee = false, marqueePosters = [] }) {
 
             {/* Show Marquee Only on Login */}
             {showMarquee && (
-                <div className="absolute inset-0 z-0 opacity-[0.15] flex gap-6 rotate-12 scale-150">
-                    {[1, 2, 3, 4, 5, 6].map((col) => {
+                <div className="absolute inset-0 z-0 opacity-[0.45] flex gap-8 rotate-[-15deg] scale-150 transform-gpu translate-y-[-10%] translate-x-[-5%]">
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((col) => {
                         // Shuffle images for each column for maximum variety
                         const colImages = [...displayPosters].sort(() => Math.random() - 0.5);
                         return (
                             <div
                                 key={col}
-                                className={`flex flex-col gap-6 ${col % 2 === 0 ? 'animate-marquee' : 'animate-marquee-reverse'}`}
-                                style={{ animationDuration: `${120 + col * 20}s` }}
+                                className={`flex flex-col gap-12 ${col % 2 === 0 ? 'animate-marquee' : 'animate-marquee-reverse'}`}
+                                style={{ animationDuration: `${140 + col * 20}s` }}
                             >
                                 {[...colImages, ...colImages, ...colImages].map((img, idx) => (
-                                    <div key={idx} className="w-40 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl relative">
-                                        <img src={img} className="h-full w-full object-cover" alt="" />
-                                        <div className="absolute inset-0 bg-slate-950/20" />
+                                    <div key={idx} className="relative group/poster flex flex-col items-center">
+                                        {/* Main Card */}
+                                        <div className="w-44 aspect-[2/3] rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 relative z-10">
+                                            <img src={img} className="h-full w-full object-cover" alt="" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/20 via-transparent to-transparent" />
+                                        </div>
+
+                                        {/* Premium Reflection Effect */}
+                                        <div className="absolute top-[calc(100%+8px)] w-44 aspect-[2/3] transform -scale-y-100 opacity-30 blur-[2px] z-0">
+                                            <img src={img} className="h-full w-full object-cover rounded-2xl" alt="" />
+                                            {/* Mask to fade reflection */}
+                                            <div className="absolute inset-0 bg-gradient-to-b from-[#090e1a] via-[#090e1a]/40 to-transparent" />
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -776,8 +786,11 @@ function Background({ showMarquee = false, marqueePosters = [] }) {
                 </div>
             )}
 
-            {/* Base Radial Glow - Lightened */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(30,41,59,0.4)_0%,rgba(10,15,30,0.9)_100%)] z-10" />
+            {/* Dark Surface Gradient Layer - To integrate reflections */}
+            <div className="absolute inset-0 z-[5] bg-gradient-to-b from-transparent via-transparent to-[#090e1a]/10" />
+
+            {/* Base Radial Glow - Clearer */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(30,41,59,0.2)_0%,rgba(10,15,30,0.4)_100%)] z-10" />
 
             {/* wandering light sources - Increased opacity */}
             <div className="absolute top-[10%] left-[10%] h-[800px] w-[800px] rounded-full bg-indigo-500/15 blur-[120px] animate-wander z-20" />
@@ -805,10 +818,16 @@ function Background({ showMarquee = false, marqueePosters = [] }) {
             <div className="absolute inset-0 opacity-[0.07] animate-grain bg-grain mix-blend-overlay z-40" />
 
             {/* Cinematic Scanlines */}
-            <div className="absolute inset-0 pointer-events-none opacity-10 bg-[linear-gradient(rgba(255,255,255,0.02)_50%,rgba(0,0,0,0.05)_50%)] bg-[length:100%_4px] z-50" />
+            <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(rgba(255,255,255,0.02)_50%,rgba(0,0,0,0.05)_50%)] bg-[length:100%_4px] z-50" />
 
-            {/* Vignette - Subtle */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_20%,rgba(2,6,23,0.4)_100%)] z-50" />
+            {/* Mirror Floor Reflection - Deep Bottom Shadow */}
+            <div className="absolute inset-x-0 bottom-0 h-1/5 bg-gradient-to-t from-[#090e1a] via-[#090e1a]/80 to-transparent z-40" />
+
+            {/* Top Fade Out Layer */}
+            <div className="absolute inset-x-0 top-0 h-1/6 bg-gradient-to-b from-[#090e1a] via-[#090e1a]/20 to-transparent z-40" />
+
+            {/* Vignette - Subtler for max visibility */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(2,6,23,0.2)_100%)] z-50" />
         </div>
     );
 }
