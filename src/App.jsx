@@ -328,9 +328,14 @@ export default function App() {
 
     // --- Unauthenticated Screen ---
     if (authStatus === 'unauthenticated') {
+        // Mix current movies with diverse fallbacks to ensure the background is never a "single image"
+        const trendingPosters = movies.length > 5
+            ? movies.slice(0, 20).map(m => m.poster)
+            : []; // Let Background component handle the diverse fallback if movies are few
+
         return (
             <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-slate-950 px-6 text-white overflow-hidden">
-                <Background showMarquee={true} />
+                <Background showMarquee={true} marqueePosters={trendingPosters} />
 
                 <div className="z-10 w-full max-w-md space-y-12 text-center">
                     <div className="flex flex-col items-center gap-6">
@@ -386,7 +391,7 @@ export default function App() {
     // --- Main App Screen (Authenticated) ---
     return (
         <div className="relative min-h-screen w-full bg-slate-950 font-sans text-slate-100 selection:bg-indigo-500/30">
-            <Background />
+            <Background marqueePosters={movies.slice(0, 10).map(m => m.poster)} />
 
             {/* Navigation */}
             <nav className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
@@ -722,32 +727,52 @@ function NexusBackground() {
     return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[5]" />;
 }
 
-function Background({ showMarquee = false }) {
-    const marqueeImages = [
-        "https://image.tmdb.org/t/p/w200/iuFNm9pYFZzw3YvYvSpgD9pHTAd.jpg",
-        "https://image.tmdb.org/t/p/w200/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
-        "https://image.tmdb.org/t/p/w200/7WsyChvgyno907JmwiicDY2P0vU.jpg",
-        "https://image.tmdb.org/t/p/w200/qJ2tW6WMUDp9QmSJJIVbiU9Y9fB.jpg",
-        "https://image.tmdb.org/t/p/w200/5gIuSCDDCunR9XmYptom7fs718W.jpg",
-        "https://image.tmdb.org/t/p/w200/vG9v14v93u77uMkd08S9tL6iRlv.jpg",
-        "https://image.tmdb.org/t/p/w200/r2J0Vv2mVbi6rNaYp3G71qIQ96R.jpg",
-        "https://image.tmdb.org/t/p/w200/kBf3gh9qbImvm9GLn2O7zXnI76P.jpg"
+function Background({ showMarquee = false, marqueePosters = [] }) {
+    const fallbackImages = [
+        "https://image.tmdb.org/t/p/w300/iuFNm9pYFZzw3YvYvSpgD9pHTAd.jpg", // Oppenheimer
+        "https://image.tmdb.org/t/p/w300/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg", // Barbie
+        "https://image.tmdb.org/t/p/w300/7WsyChvgyno907JmwiicDY2P0vU.jpg", // Interstellar
+        "https://image.tmdb.org/t/p/w300/qJ2tW6WMUDp9QmSJJIVbiU9Y9fB.jpg", // Inception
+        "https://image.tmdb.org/t/p/w300/5gIuSCDDCunR9XmYptom7fs718W.jpg", // The Matrix
+        "https://image.tmdb.org/t/p/w300/vG9v14v93u77uMkd08S9tL6iRlv.jpg", // Pulp Fiction
+        "https://image.tmdb.org/t/p/w300/r2J0Vv2mVbi6rNaYp3G71qIQ96R.jpg", // Godfather
+        "https://image.tmdb.org/t/p/w300/kBf3gh9qbImvm9GLn2O7zXnI76P.jpg", // Fight Club
+        "https://image.tmdb.org/t/p/w300/hfEK8icezrlrs5jS08psv2wqueX.jpg", // Dune
+        "https://image.tmdb.org/t/p/w300/d5iIl9h9btztUJZvyv7J2n9u3fs.jpg", // Guardians of the Galaxy
+        "https://image.tmdb.org/t/p/w300/6oom5QSilvvc6cc6L6p9GEf3Hdc.jpg", // Spider-Man
+        "https://image.tmdb.org/t/p/w300/8t3YKEp3H5mC1SjARtZ4v9q1HMD.jpg"  // The Batman
     ];
 
+    // Ensure we have at least 15 images by looping posters or mixing with fallbacks
+    const displayPosters = marqueePosters.length >= 10
+        ? marqueePosters
+        : [...marqueePosters, ...fallbackImages.filter(img => !marqueePosters.includes(img))].slice(0, 15);
+
     return (
-        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#0a0f1d]">
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#090e1a]">
             <NexusBackground />
 
             {/* Show Marquee Only on Login */}
             {showMarquee && (
-                <div className="absolute inset-0 z-0 opacity-30 flex gap-4 rotate-12 scale-125">
-                    {[1, 2, 3, 4, 5].map((col) => (
-                        <div key={col} className={`flex flex-col gap-4 ${col % 2 === 0 ? 'animate-marquee' : 'animate-marquee-reverse'}`}>
-                            {[...marqueeImages, ...marqueeImages, ...marqueeImages].map((img, idx) => (
-                                <img key={idx} src={img} className="w-32 rounded-xl" alt="" />
-                            ))}
-                        </div>
-                    ))}
+                <div className="absolute inset-0 z-0 opacity-[0.15] flex gap-6 rotate-12 scale-150">
+                    {[1, 2, 3, 4, 5, 6].map((col) => {
+                        // Shuffle images for each column for maximum variety
+                        const colImages = [...displayPosters].sort(() => Math.random() - 0.5);
+                        return (
+                            <div
+                                key={col}
+                                className={`flex flex-col gap-6 ${col % 2 === 0 ? 'animate-marquee' : 'animate-marquee-reverse'}`}
+                                style={{ animationDuration: `${120 + col * 20}s` }}
+                            >
+                                {[...colImages, ...colImages, ...colImages].map((img, idx) => (
+                                    <div key={idx} className="w-40 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl relative">
+                                        <img src={img} className="h-full w-full object-cover" alt="" />
+                                        <div className="absolute inset-0 bg-slate-950/20" />
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
