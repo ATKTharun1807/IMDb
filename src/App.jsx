@@ -299,7 +299,7 @@ export default function App() {
     if (authStatus === 'unauthenticated') {
         return (
             <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-slate-950 px-6 text-white overflow-hidden">
-                <Background />
+                <Background showMarquee={true} />
 
                 <div className="z-10 w-full max-w-md space-y-12 text-center">
                     <div className="flex flex-col items-center gap-6">
@@ -581,22 +581,178 @@ export default function App() {
 }
 
 // --- Components ---
-function Background() {
-    return (
-        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-            {/* Dark radial glow */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(15,23,42,1)_0%,rgba(2,6,23,1)_100%)]" />
+function NexusBackground() {
+    const canvasRef = React.useRef(null);
 
-            {/* Animated Bokeh Blobs */}
-            <div className="absolute top-0 -left-[10%] h-[1000px] w-[1000px] rounded-full bg-indigo-600/10 blur-[150px] animate-bokeh" />
-            <div className="absolute bottom-0 -right-[10%] h-[1000px] w-[1000px] rounded-full bg-purple-600/10 blur-[150px] animate-bokeh-reverse" />
-            <div className="absolute top-1/2 left-1/2 h-[800px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/5 blur-[150px] animate-bokeh" />
+    React.useEffect(() => {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let animationFrameId;
+        let mouse = { x: -100, y: -100, radius: 250 };
+        const colors = {
+            primary: '79, 70, 229', // Indigo 600
+            secondary: '168, 85, 247', // Purple 500
+        };
+
+        const createParticles = (width, height) => {
+            particles = [];
+            const count = Math.min(60, Math.floor((width * height) / 20000));
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    z: Math.random() * 2 + 1,
+                    vx: (Math.random() - 0.5) * 0.3,
+                    vy: (Math.random() - 0.5) * 0.3,
+                    size: Math.random() * 3 + 1,
+                    color: Math.random() > 0.5 ? colors.primary : colors.secondary,
+                    pulse: Math.random() * Math.PI * 2,
+                    pulseSpeed: 0.02 + Math.random() * 0.03
+                });
+            }
+        };
+
+        const handleResize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            createParticles(canvas.width, canvas.height);
+        };
+
+        const handleMouseMove = (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        };
+
+        const animate = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach((p, i) => {
+                p.x += p.vx * (1 / p.z);
+                p.y += p.vy * (1 / p.z);
+
+                if (p.x < -50) p.x = canvas.width + 50;
+                if (p.x > canvas.width + 50) p.x = -50;
+                if (p.y < -50) p.y = canvas.height + 50;
+                if (p.y > canvas.height + 50) p.y = -50;
+
+                const dx = mouse.x - p.x;
+                const dy = mouse.y - p.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                let extraSize = 0;
+                if (dist < mouse.radius) {
+                    const force = (1 - dist / mouse.radius);
+                    p.x -= dx * force * 0.05;
+                    p.y -= dy * force * 0.05;
+                    extraSize = force * 6;
+                }
+
+                p.pulse += p.pulseSpeed;
+                const pulseFactor = Math.sin(p.pulse) * 0.3 + 0.7;
+                const opac = (0.2 + (1 / p.z) * 0.3) * pulseFactor;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, (p.size + extraSize) * (1.5 / p.z), 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${p.color}, ${opac})`;
+                ctx.fill();
+
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const ldist = Math.sqrt(Math.pow(p.x - p2.x, 2) + Math.pow(p.y - p2.y, 2));
+
+                    if (ldist < 150) {
+                        const lineOpac = (1 - ldist / 150) * 0.15 * (1 / p.z);
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.strokeStyle = `rgba(${colors.primary}, ${lineOpac})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            });
+
+            animationFrameId = requestAnimationFrame(animate);
+        };
+
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('mousemove', handleMouseMove);
+        handleResize();
+        animate();
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('mousemove', handleMouseMove);
+            cancelAnimationFrame(animationFrameId);
+        };
+    }, []);
+
+    return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[5]" />;
+}
+
+function Background({ showMarquee = false }) {
+    const marqueeImages = [
+        "https://image.tmdb.org/t/p/w200/iuFNm9pYFZzw3YvYvSpgD9pHTAd.jpg",
+        "https://image.tmdb.org/t/p/w200/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
+        "https://image.tmdb.org/t/p/w200/7WsyChvgyno907JmwiicDY2P0vU.jpg",
+        "https://image.tmdb.org/t/p/w200/qJ2tW6WMUDp9QmSJJIVbiU9Y9fB.jpg",
+        "https://image.tmdb.org/t/p/w200/5gIuSCDDCunR9XmYptom7fs718W.jpg",
+        "https://image.tmdb.org/t/p/w200/vG9v14v93u77uMkd08S9tL6iRlv.jpg",
+        "https://image.tmdb.org/t/p/w200/r2J0Vv2mVbi6rNaYp3G71qIQ96R.jpg",
+        "https://image.tmdb.org/t/p/w200/kBf3gh9qbImvm9GLn2O7zXnI76P.jpg"
+    ];
+
+    return (
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-slate-950">
+            <NexusBackground />
+
+            {/* Show Marquee Only on Login */}
+            {showMarquee && (
+                <div className="absolute inset-0 z-0 opacity-20 flex gap-4 rotate-12 scale-125">
+                    {[1, 2, 3, 4, 5].map((col) => (
+                        <div key={col} className={`flex flex-col gap-4 ${col % 2 === 0 ? 'animate-marquee' : 'animate-marquee-reverse'}`}>
+                            {[...marqueeImages, ...marqueeImages, ...marqueeImages].map((img, idx) => (
+                                <img key={idx} src={img} className="w-32 rounded-xl" alt="" />
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Base Radial Glow */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(15,23,42,0.8)_0%,rgba(2,6,23,1)_100%)] z-10" />
+
+            {/* wandering light sources */}
+            <div className="absolute top-[10%] left-[10%] h-[800px] w-[800px] rounded-full bg-indigo-600/10 blur-[120px] animate-wander z-20" />
+            <div className="absolute top-[40%] right-[10%] h-[700px] w-[700px] rounded-full bg-purple-600/10 blur-[120px] animate-wander [animation-delay:-5s] z-20" />
+            <div className="absolute bottom-[10%] left-[30%] h-[600px] w-[600px] rounded-full bg-blue-600/10 blur-[120px] animate-wander [animation-delay:-12s] z-20" />
+
+            {/* Drifting Particles/Stars */}
+            <div className="absolute inset-0 z-30">
+                {[...Array(20)].map((_, i) => (
+                    <div
+                        key={i}
+                        className="absolute h-px w-px bg-white rounded-full animate-drift"
+                        style={{
+                            top: `${Math.random() * 100}%`,
+                            left: `${Math.random() * 100}%`,
+                            opacity: Math.random() * 0.5,
+                            animationDuration: `${30 + Math.random() * 60}s`,
+                            animationDelay: `-${Math.random() * 60}s`
+                        }}
+                    />
+                ))}
+            </div>
 
             {/* Film Grain/Noise Overlay */}
-            <div className="absolute inset-0 opacity-[0.04] animate-grain bg-grain mix-blend-overlay" />
+            <div className="absolute inset-0 opacity-[0.05] animate-grain bg-grain mix-blend-overlay z-40" />
 
-            {/* Scanlines Effect */}
-            <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.02),rgba(0,255,0,0.01),rgba(0,0,255,0.02))] bg-[length:100%_4px,4px_100%]" />
+            {/* Cinematic Scanlines */}
+            <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px] z-50" />
+
+            {/* Vignette */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(2,6,23,0.6)_100%)] z-50" />
         </div>
     );
 }

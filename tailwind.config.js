@@ -14,8 +14,18 @@ export default {
                 'shimmer': 'shimmer 2s linear infinite',
                 'wander': 'wander 40s ease-in-out infinite',
                 'drift': 'drift 60s linear infinite',
+                'marquee': 'marquee 100s linear infinite',
+                'marquee-reverse': 'marquee-reverse 120s linear infinite',
             },
             keyframes: {
+                marquee: {
+                    '0%': { transform: 'translateY(0)' },
+                    '100%': { transform: 'translateY(-50%)' },
+                },
+                'marquee-reverse': {
+                    '0%': { transform: 'translateY(-50%)' },
+                    '100%': { transform: 'translateY(0)' },
+                },
                 wander: {
                     '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
                     '25%': { transform: 'translate(10vw, 15vh) scale(1.2) rotate(90deg)' },
