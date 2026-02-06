@@ -20,7 +20,11 @@ import {
     LogIn,
     LogOut,
     Mail,
-    Github
+    Github,
+    Ticket,
+    Tv,
+    ExternalLink,
+    MapPin
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import {
@@ -108,12 +112,18 @@ export default function App() {
     const [watchlist, setWatchlist] = useState([]);
     const [userProfile, setUserProfile] = useState({
         name: "Cinephile",
-        favoriteGenres: ["Sci-Fi", "Drama"],
+        favoriteGenres: [],
         ageSafe: false,
     });
     const [movies, setMovies] = useState([]);
     const [search, setSearch] = useState("");
     const [selectedMovie, setSelectedMovie] = useState(null);
+    const [similarMovies, setSimilarMovies] = useState([]);
+    const [watchProviders, setWatchProviders] = useState(null);
+    const [providerRegion, setProviderRegion] = useState(null); // 'IN' or 'Global'
+    const [theatricalStatus, setTheatricalStatus] = useState(null);
+    const [isDetailsLoading, setIsDetailsLoading] = useState(false);
+    const [selectedGenre, setSelectedGenre] = useState(null);
     const [activeTab, setActiveTab] = useState("discover");
     const [error, setError] = useState(null);
     const [isDataLoading, setIsDataLoading] = useState(true);
@@ -189,6 +199,47 @@ export default function App() {
         }
     };
 
+    const getDirectProviderLink = (providerName, movieTitle, movieYear) => {
+        const query = encodeURIComponent(movieTitle);
+        const name = providerName.toLowerCase();
+
+        // India-specific & Global OTT Search URL mapping - Refined with Regional Fallbacks
+        if (name.includes('netflix')) return `https://www.netflix.com/search?q=${query}`;
+
+        // Prime Video: use the direct search endpoint, fallback to global if local fails
+        if (name.includes('prime') || name.includes('amazon')) {
+            return `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${movieTitle}`;
+        }
+
+        // Hotstar: region-specific search tends to be more accurate, fallback to Global Disney+
+        if (name.includes('hotstar') || name.includes('disney')) {
+            return `https://www.hotstar.com/in/explore?search_query=${query}`;
+        }
+
+        // Apple TV: Indian store specific search, fallback to US store if needed via platform redirect
+        if (name.includes('apple')) {
+            return `https://tv.apple.com/in/search?term=${query}`;
+        }
+
+        // Zee5: Standard search
+        if (name.includes('zee5')) {
+            return `https://www.zee5.com/search?q=${query}`;
+        }
+
+        // Global fallback for international discovery - JustWatch is great for regional checks
+        if (name.includes('justwatch')) {
+            return `https://www.justwatch.com/in/search?q=${query}`;
+        }
+
+        if (name.includes('google')) return `https://play.google.com/store/search?q=${query}&c=movies`;
+        if (name.includes('youtube')) return `https://www.youtube.com/results?search_query=${query}+movie`;
+        if (name.includes('jiocinema')) return `https://www.jiocinema.com/search/${query}`;
+        if (name.includes('sony')) return `https://www.sonyliv.com/search?q=${query}`;
+
+        // ULTIMATE REGIONAL FALLBACK: If movie isn't in local region, use a global discovery query
+        return `https://www.google.com/search?q=where+to+watch+${query}+${movieYear}+online+streaming`;
+    };
+
     const searchMovies = async (query) => {
         if (!query) {
             fetchTrending();
@@ -205,6 +256,92 @@ export default function App() {
             setIsDataLoading(false);
         }
     };
+
+    const fetchMovieDetails = async (movieId) => {
+        if (!movieId) return;
+        try {
+            setIsDetailsLoading(true);
+            const headers = { 'Accept': 'application/json' };
+
+            // Parallel fetch for speed
+            const [recommendationsRes, providersRes, releasesRes] = await Promise.all([
+                fetch(`${TMDB_BASE_URL}/movie/${movieId}/recommendations?api_key=${TMDB_API_KEY}`, { headers }),
+                fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`, { headers }),
+                fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`, { headers })
+            ]);
+
+            const [recData, provData, relData] = await Promise.all([
+                recommendationsRes.json(),
+                providersRes.json(),
+                releasesRes.json()
+            ]);
+
+            // Set Similar
+            setSimilarMovies(recData.results?.map(mapTMDBMovie).slice(0, 6) || []);
+
+            // Deduplicate providers by name (e.g. Amazon Prime & Amazon Video)
+            const deduplicate = (list) => {
+                const seen = new Set();
+                return (list || []).filter(p => {
+                    const name = p.provider_name.toLowerCase().replace('amazon', 'prime');
+                    if (seen.has(name)) return false;
+                    seen.add(name);
+                    return true;
+                });
+            };
+
+            // Set Providers with Region Tracking
+            const inProviders = provData.results?.IN;
+            const usProviders = provData.results?.US;
+            const providers = inProviders || usProviders;
+            const region = inProviders ? 'IN' : (usProviders ? 'Global' : null);
+
+            const availableProviders = providers ? {
+                streaming: deduplicate(providers.flatrate),
+                rent: deduplicate(providers.rent),
+                buy: deduplicate(providers.buy),
+                link: providers.link
+            } : null;
+
+            setWatchProviders(availableProviders);
+            setProviderRegion(region);
+
+            // Set Theatrical Status
+            const indianReleases = relData.results?.find(r => r.iso_3166_1 === 'IN') || relData.results?.find(r => r.iso_3166_1 === 'US');
+            const latestRelease = indianReleases?.release_dates?.sort((a, b) => new Date(b.release_date) - new Date(a.release_date))[0];
+
+            if (latestRelease) {
+                const releaseDate = new Date(latestRelease.release_date);
+                const now = new Date();
+                let status = "Released";
+                if (releaseDate > now) status = "Upcoming";
+                else if (now.getTime() - releaseDate.getTime() < 30 * 24 * 60 * 60 * 1000) status = "In Theaters";
+
+                setTheatricalStatus({
+                    date: releaseDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+                    status: status,
+                    type: latestRelease.type // 3 is theatrical
+                });
+            } else {
+                setTheatricalStatus(null);
+            }
+
+        } catch (err) {
+            console.error("Failed to fetch movie details:", err);
+        } finally {
+            setIsDetailsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedMovie) {
+            fetchMovieDetails(selectedMovie.id);
+        } else {
+            setSimilarMovies([]);
+            setWatchProviders(null);
+            setTheatricalStatus(null);
+        }
+    }, [selectedMovie]);
 
     useEffect(() => {
         fetchTrending();
@@ -236,7 +373,12 @@ export default function App() {
         const profileRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'settings');
         const unsubProfile = onSnapshot(profileRef, (doc) => {
             if (doc.exists()) {
-                setUserProfile(doc.data());
+                const data = doc.data();
+                setUserProfile(prev => ({
+                    ...prev,
+                    ...data,
+                    favoriteGenres: Array.isArray(data.favoriteGenres) ? data.favoriteGenres : []
+                }));
             }
         }, (err) => console.error("Profile snap error:", err));
 
@@ -313,8 +455,9 @@ export default function App() {
             })
             .map(movie => {
                 let score = movie.rating;
+                const favs = userProfile.favoriteGenres || [];
                 movie.genres.forEach(g => {
-                    if (userProfile.favoriteGenres.includes(g)) score += 2;
+                    if (favs.includes(g)) score += 5; // Increased boost
                 });
                 return { ...movie, score };
             })
@@ -324,9 +467,10 @@ export default function App() {
     const filteredMovies = useMemo(() => {
         return movies.filter(m => {
             const matchesAge = userProfile.ageSafe ? m.ageRating !== "R" : true;
-            return matchesAge;
+            const matchesGenre = selectedGenre ? m.genres.includes(selectedGenre) : true;
+            return matchesAge && matchesGenre;
         });
-    }, [movies, userProfile.ageSafe]);
+    }, [movies, userProfile.ageSafe, selectedGenre]);
 
     // --- Actions ---
     const toggleWatchlist = async (movie, status = "Watchlist") => {
@@ -349,9 +493,10 @@ export default function App() {
 
     const updateProfile = async (updates) => {
         if (!user) return;
-        const newProfile = { ...userProfile, ...updates };
+        // Optimistic update
+        setUserProfile(prev => ({ ...prev, ...updates }));
         const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'settings');
-        await setDoc(docRef, newProfile);
+        await setDoc(docRef, { ...userProfile, ...updates });
     };
 
     // --- Loading State ---
@@ -563,34 +708,56 @@ export default function App() {
                                     )}
                                 </div>
                             </div>
+
+                            <div className="flex flex-wrap items-center justify-center gap-2 mt-8 max-w-4xl mx-auto px-4">
+                                <button
+                                    onClick={() => setSelectedGenre(null)}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${!selectedGenre ? 'bg-indigo-600 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]' : 'bg-slate-900 text-slate-500 hover:text-slate-300 ring-1 ring-white/5'}`}
+                                >
+                                    All
+                                </button>
+                                {GENRES.map(g => (
+                                    <button
+                                        key={g}
+                                        onClick={() => setSelectedGenre(selectedGenre === g ? null : g)}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${selectedGenre === g ? 'bg-indigo-600 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]' : 'bg-slate-900 text-slate-500 hover:text-slate-300 ring-1 ring-white/5'}`}
+                                    >
+                                        {g}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
-                        {isDataLoading && (
-                            <div className="flex flex-col items-center justify-center py-20">
-                                <div className="relative h-20 w-20 flex items-center justify-center">
-                                    <Film className="h-10 w-10 animate-spin text-indigo-500 absolute" />
-                                    <div className="h-20 w-20 rounded-full border-t-2 border-indigo-500/30 animate-spin" />
-                                </div>
-                                <p className="mt-8 text-indigo-400 font-bold uppercase tracking-[0.2em] text-xs">Accessing Archives...</p>
-                            </div>
-                        )}
-
-                        {!isDataLoading && !search && recommendations.length > 0 && (
-                            <section className="space-y-8">
-                                <HeroCard movie={recommendations[0]} onClick={() => setSelectedMovie(recommendations[0])} />
-
-                                <div className="space-y-6 pt-12">
-                                    <div className="flex items-center justify-between">
-                                        <h2 className="flex items-center gap-3 text-3xl font-black text-white italic tracking-tight underline decoration-indigo-500/50 underline-offset-8">
-                                            <Flame className="h-8 w-8 text-indigo-500" /> TOP PICKS FOR YOU
-                                        </h2>
+                        {
+                            isDataLoading && (
+                                <div className="flex flex-col items-center justify-center py-20">
+                                    <div className="relative h-20 w-20 flex items-center justify-center">
+                                        <Film className="h-10 w-10 animate-spin text-indigo-500 absolute" />
+                                        <div className="h-20 w-20 rounded-full border-t-2 border-indigo-500/30 animate-spin" />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                                        {recommendations.slice(1, 6).map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
-                                    </div>
+                                    <p className="mt-8 text-indigo-400 font-bold uppercase tracking-[0.2em] text-xs">Accessing Archives...</p>
                                 </div>
-                            </section>
-                        )}
+                            )
+                        }
+
+                        {
+                            !isDataLoading && !search && recommendations.length > 0 && (
+                                <section className="space-y-8">
+                                    <HeroCard movie={recommendations[0]} onClick={() => setSelectedMovie(recommendations[0])} />
+
+                                    <div className="space-y-6 pt-12">
+                                        <div className="flex items-center justify-between">
+                                            <h2 className="flex items-center gap-3 text-3xl font-black text-white italic tracking-tight underline decoration-indigo-500/50 underline-offset-8">
+                                                <Flame className="h-8 w-8 text-indigo-500" /> TOP PICKS FOR YOU
+                                            </h2>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                                            {recommendations.slice(1, 6).map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
+                                        </div>
+                                    </div>
+                                </section>
+                            )
+                        }
 
                         <section className="space-y-6 pb-20">
                             <h2 className="text-3xl font-black text-white italic tracking-tight underline decoration-slate-800 underline-offset-8">
@@ -600,129 +767,280 @@ export default function App() {
                                 {filteredMovies.map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
                             </div>
                         </section>
-                    </div>
-                )}
+                    </div >
+                )
+                }
 
-                {activeTab === 'watchlist' && (
-                    <div className="space-y-8">
-                        <h2 className="text-3xl font-bold text-white">My Diary</h2>
-                        {watchlist.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-800 py-24 text-center">
-                                <Bookmark className="mb-4 h-16 w-16 text-slate-700" />
-                                <p className="text-xl font-semibold text-slate-400">Your watchlist is empty</p>
-                                <button onClick={() => setActiveTab('discover')} className="mt-6 rounded-full bg-indigo-600 px-6 py-2 font-semibold">Explore Movies</button>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4">
-                                {watchlist.map(item => (
-                                    <div key={item.id} className="group relative rounded-2xl bg-slate-900/50 p-4 ring-1 ring-slate-800">
-                                        <img src={item.poster} className="aspect-[2/3] w-full rounded-xl object-cover" />
-                                        <div className="mt-4 flex items-center justify-between">
-                                            <h3 className="line-clamp-1 font-bold text-white">{item.title}</h3>
-                                            <button onClick={() => toggleWatchlist({ id: item.movieId })} className="text-xs text-red-400">Remove</button>
+                {
+                    activeTab === 'watchlist' && (
+                        <div className="space-y-8">
+                            <h2 className="text-3xl font-bold text-white">My Diary</h2>
+                            {watchlist.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-800 py-24 text-center">
+                                    <Bookmark className="mb-4 h-16 w-16 text-slate-700" />
+                                    <p className="text-xl font-semibold text-slate-400">Your watchlist is empty</p>
+                                    <button onClick={() => setActiveTab('discover')} className="mt-6 rounded-full bg-indigo-600 px-6 py-2 font-semibold">Explore Movies</button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4">
+                                    {watchlist.map(item => (
+                                        <div key={item.id} className="group relative rounded-2xl bg-slate-900/50 p-4 ring-1 ring-slate-800">
+                                            <img src={item.poster} className="aspect-[2/3] w-full rounded-xl object-cover" />
+                                            <div className="mt-4 flex items-center justify-between">
+                                                <h3 className="line-clamp-1 font-bold text-white">{item.title}</h3>
+                                                <button onClick={() => toggleWatchlist({ id: item.movieId })} className="text-xs text-red-400">Remove</button>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {activeTab === 'profile' && (
-                    <div className="max-w-2xl space-y-8">
-                        <div className="flex items-center gap-6">
-                            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-indigo-600">
-                                {user.photoURL ? <img src={user.photoURL} className="h-full w-full rounded-2xl" /> : <User className="h-10 w-10 text-white" />}
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-bold text-white">{userProfile.name} {user.isAnonymous && <span className="ml-2 text-xs text-slate-500">(Guest)</span>}</h2>
-                                <p className="text-slate-500">{user.email || 'Anonymous Account'}</p>
-                            </div>
-                        </div>
-
-                        <div className="grid gap-6 rounded-3xl bg-slate-900/50 p-8 ring-1 ring-slate-800">
-                            <section className="space-y-4">
-                                <h3 className="font-bold text-white">Favorite Genres</h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {GENRES.map(genre => (
-                                        <button
-                                            key={genre}
-                                            onClick={() => {
-                                                const updated = userProfile.favoriteGenres.includes(genre) ? userProfile.favoriteGenres.filter(g => g !== genre) : [...userProfile.favoriteGenres, genre];
-                                                updateProfile({ favoriteGenres: updated });
-                                            }}
-                                            className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${userProfile.favoriteGenres.includes(genre) ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'}`}
-                                        >
-                                            {genre}
-                                        </button>
                                     ))}
                                 </div>
-                            </section>
-
-                            <hr className="border-slate-800" />
-
-                            <section className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="font-bold text-white">Age-Safe Content</h3>
-                                    <p className="text-xs text-slate-500">Filters out mature content.</p>
-                                </div>
-                                <button onClick={() => updateProfile({ ageSafe: !userProfile.ageSafe })} className={`h-6 w-11 rounded-full transition-colors ${userProfile.ageSafe ? 'bg-indigo-600' : 'bg-slate-700'}`}>
-                                    <div className={`h-4 w-4 transform rounded-full bg-white transition-transform ${userProfile.ageSafe ? 'translate-x-6' : 'translate-x-1'}`} />
-                                </button>
-                            </section>
-
-                            <hr className="border-slate-800" />
-
-                            <button
-                                onClick={handleLogout}
-                                className="flex items-center gap-2 font-bold text-red-400 hover:text-red-300"
-                            >
-                                <LogOut className="h-5 w-5" /> Logout
-                            </button>
+                            )}
                         </div>
-                    </div>
-                )}
-            </main>
+                    )
+                }
+
+                {
+                    activeTab === 'profile' && (
+                        <div className="max-w-2xl space-y-8">
+                            <div className="flex items-center gap-6">
+                                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-indigo-600">
+                                    {user.photoURL ? <img src={user.photoURL} className="h-full w-full rounded-2xl" /> : <User className="h-10 w-10 text-white" />}
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white">{userProfile.name} {user.isAnonymous && <span className="ml-2 text-xs text-slate-500">(Guest)</span>}</h2>
+                                    <p className="text-slate-500">{user.email || 'Anonymous Account'}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-6 rounded-3xl bg-slate-900/50 p-8 ring-1 ring-slate-800">
+                                <section className="space-y-4">
+                                    <h3 className="font-bold text-white">Favorite Genres</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {GENRES.map(genre => {
+                                            const favs = userProfile.favoriteGenres || [];
+                                            const isActive = favs.includes(genre);
+                                            return (
+                                                <button
+                                                    key={genre}
+                                                    onClick={() => {
+                                                        const updated = isActive ? favs.filter(g => g !== genre) : [...favs, genre];
+                                                        updateProfile({ favoriteGenres: updated });
+                                                    }}
+                                                    className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                                                >
+                                                    {genre}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </section>
+
+                                <hr className="border-slate-800" />
+
+                                <section className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="font-bold text-white">Age-Safe Content</h3>
+                                        <p className="text-xs text-slate-500">Filters out mature content.</p>
+                                    </div>
+                                    <button onClick={() => updateProfile({ ageSafe: !userProfile.ageSafe })} className={`h-6 w-11 rounded-full transition-colors ${userProfile.ageSafe ? 'bg-indigo-600' : 'bg-slate-700'}`}>
+                                        <div className={`h-4 w-4 transform rounded-full bg-white transition-transform ${userProfile.ageSafe ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    </button>
+                                </section>
+
+                                <hr className="border-slate-800" />
+
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center gap-2 font-bold text-red-400 hover:text-red-300"
+                                >
+                                    <LogOut className="h-5 w-5" /> Logout
+                                </button>
+                            </div>
+                        </div>
+                    )
+                }
+            </main >
 
             {/* Detail Modal */}
-            {selectedMovie && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setSelectedMovie(null)} />
-                    <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-slate-900 ring-1 ring-slate-800 flex flex-col md:flex-row">
-                        <button onClick={() => setSelectedMovie(null)} className="absolute right-6 top-6 z-10 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 transition-colors"><X className="h-5 w-5" /></button>
-                        <div className="h-64 w-full md:h-auto md:w-2/5 overflow-hidden bg-slate-950">
-                            <PosterImage src={selectedMovie.poster} alt={selectedMovie.title} className="h-full w-full object-cover" />
-                        </div>
-                        <div className="flex-1 p-8 md:p-10">
-                            {selectedMovie.backdrop && (
-                                <div className="absolute inset-x-0 top-0 -z-10 h-64 opacity-20 blur-3xl" style={{ backgroundImage: `url(${selectedMovie.backdrop})`, backgroundSize: 'cover' }} />
-                            )}
-                            <h2 className="text-3xl font-black text-white">{selectedMovie.title}</h2>
-                            <div className="mt-2 flex items-center gap-3 text-sm text-slate-400">
-                                <span className="font-bold">{selectedMovie.year}</span>
-                                <span className="flex items-center gap-1 text-yellow-500"><Star className="h-4 w-4 fill-yellow-500" /> {selectedMovie.rating}</span>
-                                <span className="rounded border border-slate-700 px-2 py-0.5 uppercase">{selectedMovie.ageRating}</span>
+            {
+                selectedMovie && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setSelectedMovie(null)} />
+                        <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-slate-900 ring-1 ring-slate-800 flex flex-col md:flex-row">
+                            <button onClick={() => setSelectedMovie(null)} className="absolute right-6 top-6 z-10 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 transition-colors"><X className="h-5 w-5" /></button>
+                            <div className="h-64 w-full md:h-auto md:w-2/5 overflow-hidden bg-slate-950">
+                                <PosterImage src={selectedMovie.poster} alt={selectedMovie.title} className="h-full w-full object-cover" />
                             </div>
-                            <p className="mt-6 text-slate-300 leading-relaxed">{selectedMovie.plot}</p>
-                            <div className="mt-12 flex gap-4">
-                                <button
-                                    onClick={() => toggleWatchlist(selectedMovie, "Watchlist")}
-                                    className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-4 font-bold ${watchlist.some(w => w.movieId === selectedMovie.id && w.status === 'Watchlist') ? 'bg-slate-800 text-indigo-400' : 'bg-indigo-600 text-white'}`}
-                                >
-                                    <Bookmark className="h-5 w-5" /> Watchlist
-                                </button>
-                                <button
-                                    onClick={() => toggleWatchlist(selectedMovie, "Watched")}
-                                    className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-4 font-bold ${watchlist.some(w => w.movieId === selectedMovie.id && w.status === 'Watched') ? 'bg-green-600 text-white' : 'bg-slate-800 text-slate-400'}`}
-                                >
-                                    <CheckCircle className="h-5 w-5" /> Watched
-                                </button>
+                            <div className="flex-1 p-8 md:p-10">
+                                {selectedMovie.backdrop && (
+                                    <div className="absolute inset-x-0 top-0 -z-10 h-64 opacity-20 blur-3xl" style={{ backgroundImage: `url(${selectedMovie.backdrop})`, backgroundSize: 'cover' }} />
+                                )}
+                                <h2 className="text-3xl font-black text-white">{selectedMovie.title}</h2>
+                                <div className="mt-2 flex items-center gap-3 text-sm text-slate-400">
+                                    <span className="font-bold">{selectedMovie.year}</span>
+                                    <span className="flex items-center gap-1 text-yellow-500"><Star className="h-4 w-4 fill-yellow-500" /> {selectedMovie.rating}</span>
+                                    <span className="rounded border border-slate-700 px-2 py-0.5 uppercase">{selectedMovie.ageRating}</span>
+                                </div>
+                                <p className="mt-6 text-slate-300 leading-relaxed">{selectedMovie.plot}</p>
+
+                                {/* Availability Info */}
+                                <div className="mt-8">
+                                    {theatricalStatus?.status === 'In Theaters' ? (
+                                        /* Only show In Theaters if currently showing */
+                                        <div className="flex items-center gap-4 rounded-2xl bg-indigo-500/10 p-6 ring-1 ring-indigo-500/50 border-l-4 border-indigo-500 shadow-xl shadow-indigo-500/10">
+                                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500 text-white shadow-lg">
+                                                <Ticket className="h-6 w-6" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-400">Exclusive Cinematic Release</p>
+                                                <p className="text-xl font-black text-white flex items-center gap-3 mt-1 italic uppercase">
+                                                    In Theaters Now
+                                                    <span className="text-[10px] bg-indigo-600/20 px-2 py-1 rounded-full text-indigo-300 font-bold tracking-widest ring-1 ring-indigo-500/30 not-italic uppercase">Since {theatricalStatus.date}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        /* Show regular layout if not exclusively in theaters */
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {/* Theatrical / Release Status */}
+                                            {theatricalStatus && (
+                                                <div className="flex items-center gap-4 rounded-2xl bg-slate-800/40 p-4 ring-1 ring-white/5 border-l-4 border-indigo-500">
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400">
+                                                        <Ticket className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Release Status</p>
+                                                        <p className="text-sm font-bold text-white flex items-center gap-2">
+                                                            {theatricalStatus.status}
+                                                            <span className="text-[10px] bg-slate-900 px-1.5 py-0.5 rounded text-slate-400">{theatricalStatus.date}</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Streaming/OTT */}
+                                            {(watchProviders?.streaming?.length > 0 || watchProviders?.rent?.length > 0) && (
+                                                <div className="flex items-center gap-4 rounded-2xl bg-slate-800/40 p-4 ring-1 ring-white/5 border-l-4 border-emerald-500 relative overflow-hidden">
+                                                    {providerRegion === 'Global' && (
+                                                        <div className="absolute top-0 right-0 bg-amber-500/20 px-2 py-0.5 text-[8px] font-black uppercase text-amber-500 rounded-bl-lg ring-1 ring-amber-500/30">
+                                                            Not in India
+                                                        </div>
+                                                    )}
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
+                                                        <Tv className="h-5 w-5" />
+                                                    </div>
+                                                    <div className="flex-1 overflow-hidden text-left">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Watch on OTT</p>
+                                                            {providerRegion === 'Global' && <span className="text-[8px] font-bold text-amber-500/80 italic">(US/Global Info)</span>}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            {watchProviders.streaming?.length > 0 ? (
+                                                                <div className="flex items-center gap-3">
+                                                                    {watchProviders.streaming.slice(0, 3).map(p => (
+                                                                        <a
+                                                                            key={p.provider_id}
+                                                                            href={getDirectProviderLink(p.provider_name, selectedMovie.title, selectedMovie.year)}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="group/platform relative"
+                                                                        >
+                                                                            <img
+                                                                                src={`${TMDB_IMAGE_BASE_URL}${p.logo_path}`}
+                                                                                alt={p.provider_name}
+                                                                                className="h-8 w-8 rounded-lg shadow-lg ring-1 ring-white/10 group-hover/platform:scale-110 group-hover/platform:ring-emerald-500/50 transition-all"
+                                                                                title={`Watch on ${p.provider_name}`}
+                                                                            />
+                                                                            <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-emerald-500 flex items-center justify-center opacity-0 group-hover/platform:opacity-100 transition-opacity ring-2 ring-slate-900 scale-75">
+                                                                                <ExternalLink className="h-2 w-2 text-white" />
+                                                                            </div>
+                                                                        </a>
+                                                                    ))}
+                                                                    {watchProviders.streaming.length > 3 && <span className="text-[10px] font-bold text-slate-500">+{watchProviders.streaming.length - 3}</span>}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[10px] font-bold text-slate-400 mr-1 uppercase">Rent/Buy:</span>
+                                                                    {(watchProviders.rent || watchProviders.buy).slice(0, 2).map(p => (
+                                                                        <a
+                                                                            key={p.provider_id}
+                                                                            href={getDirectProviderLink(p.provider_name, selectedMovie.title, selectedMovie.year)}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="hover:scale-110 transition-transform"
+                                                                        >
+                                                                            <img
+                                                                                src={`${TMDB_IMAGE_BASE_URL}${p.logo_path}`}
+                                                                                alt={p.provider_name}
+                                                                                className="h-6 w-6 rounded shadow-sm opacity-80"
+                                                                                title={`Rent/Buy on ${p.provider_name}`}
+                                                                            />
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="mt-12 flex gap-4">
+                                    <button
+                                        onClick={() => toggleWatchlist(selectedMovie, "Watchlist")}
+                                        className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-4 font-bold transition-all ${watchlist.some(w => w.movieId === selectedMovie.id && w.status === 'Watchlist') ? 'bg-indigo-600/20 text-indigo-400 ring-1 ring-indigo-500/50' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:scale-[1.02]'}`}
+                                    >
+                                        <Bookmark className="h-5 w-5" /> Watchlist
+                                    </button>
+                                    <button
+                                        onClick={() => toggleWatchlist(selectedMovie, "Watched")}
+                                        className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-4 font-bold transition-all ${watchlist.some(w => w.movieId === selectedMovie.id && w.status === 'Watched') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/50' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                                    >
+                                        <CheckCircle className="h-5 w-5" /> Watched
+                                    </button>
+                                </div>
+
+                                {/* Related Recommended Movies */}
+                                <div className="mt-12 space-y-4">
+                                    <h3 className="text-xs font-black text-indigo-400 uppercase tracking-[0.2em] italic flex items-center gap-2">
+                                        <Flame className="h-4 w-4" /> Related Recommended Movies
+                                    </h3>
+
+                                    {isDetailsLoading ? (
+                                        <div className="flex gap-4 overflow-hidden">
+                                            {[1, 2, 3, 4].map(i => (
+                                                <div key={i} className="min-w-[100px] md:min-w-[130px] aspect-[2/3] rounded-2xl bg-slate-800 animate-pulse" />
+                                            ))}
+                                        </div>
+                                    ) : similarMovies.length > 0 ? (
+                                        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
+                                            {similarMovies.map(m => (
+                                                <div
+                                                    key={m.id}
+                                                    onClick={() => setSelectedMovie(m)}
+                                                    className="min-w-[100px] md:min-w-[130px] cursor-pointer group transition-all"
+                                                >
+                                                    <div className="relative aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/10 group-hover:ring-indigo-500/50 transition-all shadow-xl">
+                                                        <img src={m.poster} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" alt={m.title} />
+                                                        <div className="absolute inset-x-2 bottom-2">
+                                                            <div className="bg-slate-950/80 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] font-bold text-yellow-500 flex items-center gap-1 w-fit">
+                                                                <Star className="h-3 w-3 fill-yellow-500" /> {m.rating}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-slate-500 italic">No related discoveries found.</p>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
 
