@@ -25,7 +25,9 @@ import {
     Tv,
     ExternalLink,
     MapPin,
-    Play
+    Play,
+    List,
+    Clock3
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import {
@@ -130,7 +132,11 @@ export default function App() {
     const [isDataLoading, setIsDataLoading] = useState(true);
     const [trailerKey, setTrailerKey] = useState(null);
     const [showTrailer, setShowTrailer] = useState(false);
+    const [selectedLanguage, setSelectedLanguage] = useState(null); // 'ta', 'te', 'hi', etc.
     const [autoPlayNextMovie, setAutoPlayNextMovie] = useState(false);
+    const [movieCredits, setMovieCredits] = useState(null);
+    const [runtime, setRuntime] = useState(null);
+    const [tagline, setTagline] = useState(null);
 
     // Email Auth States
     const [authMode, setAuthMode] = useState('landing'); // landing, login, register
@@ -268,19 +274,27 @@ export default function App() {
             const headers = { 'Accept': 'application/json' };
 
             // Parallel fetch for speed
-            const [recommendationsRes, providersRes, releasesRes, videosRes] = await Promise.all([
+            const [recommendationsRes, providersRes, releasesRes, videosRes, detailsRes, creditsRes] = await Promise.all([
                 fetch(`${TMDB_BASE_URL}/movie/${movieId}/recommendations?api_key=${TMDB_API_KEY}`, { headers }),
                 fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`, { headers }),
                 fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`, { headers }),
-                fetch(`${TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${TMDB_API_KEY}`, { headers })
+                fetch(`${TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${TMDB_API_KEY}`, { headers }),
+                fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}`, { headers }),
+                fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}`, { headers })
             ]);
 
-            const [recData, provData, relData, videoData] = await Promise.all([
+            const [recData, provData, relData, videoData, detailsData, creditsData] = await Promise.all([
                 recommendationsRes.json(),
                 providersRes.json(),
                 releasesRes.json(),
-                videosRes.json()
+                videosRes.json(),
+                detailsRes.json(),
+                creditsRes.json()
             ]);
+
+            setRuntime(detailsData.runtime);
+            setTagline(detailsData.tagline);
+            setMovieCredits(creditsData);
 
             // Set Similar
             setSimilarMovies(recData.results?.map(mapTMDBMovie).slice(0, 6) || []);
@@ -360,6 +374,9 @@ export default function App() {
             setWatchProviders(null);
             setTheatricalStatus(null);
             setSimilarMovies([]);
+            setMovieCredits(null);
+            setRuntime(null);
+            setTagline(null);
             fetchMovieDetails(selectedMovie.id);
         } else {
             setSimilarMovies([]);
@@ -368,6 +385,9 @@ export default function App() {
             setTrailerKey(null);
             setShowTrailer(false);
             setAutoPlayNextMovie(false);
+            setMovieCredits(null);
+            setRuntime(null);
+            setTagline(null);
         }
     }, [selectedMovie]);
 
@@ -888,227 +908,190 @@ export default function App() {
                 }
             </main >
 
-            {/* Detail Modal */}
             {
                 selectedMovie && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setSelectedMovie(null)} />
-                        <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-slate-900 ring-1 ring-slate-800 flex flex-col md:flex-row">
-                            <button onClick={() => setSelectedMovie(null)} className="absolute right-6 top-6 z-10 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 transition-colors"><X className="h-5 w-5" /></button>
-                            <div className="h-64 w-full md:h-auto md:w-2/5 overflow-hidden bg-slate-950 relative group/trailer">
-                                {showTrailer && trailerKey ? (
-                                    <div className="relative h-full w-full">
-                                        <iframe
-                                            className="h-full w-full"
-                                            src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1`}
-                                            title="YouTube video player"
-                                            frameBorder="0"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                            allowFullScreen
-                                        ></iframe>
-                                        <button
-                                            onClick={() => setShowTrailer(false)}
-                                            className="absolute top-4 left-4 z-20 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 transition-colors"
-                                            title="Back to Poster"
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <PosterImage src={selectedMovie.poster} alt={selectedMovie.title} className="h-full w-full object-cover" />
-                                        {trailerKey && (
-                                            <div
-                                                onClick={() => setShowTrailer(true)}
-                                                className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/40 md:opacity-0 md:group-hover/trailer:opacity-100 transition-all duration-500 cursor-pointer backdrop-blur-[2px]"
-                                            >
-                                                <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-indigo-600 text-white shadow-[0_0_30px_rgba(79,70,229,0.5)] md:scale-75 md:group-hover/trailer:scale-100 transition-all duration-500">
-                                                    <Play className="h-8 w-8 md:h-10 md:w-10 fill-current ml-1" />
-                                                </div>
-                                                <p className="mt-4 text-xs md:text-sm font-black uppercase tracking-[0.2em] text-white drop-shadow-lg">Watch Trailer</p>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                            <div className="flex-1 p-8 md:p-10 relative">
-                                {selectedMovie.backdrop && (
-                                    <div className="absolute inset-x-0 top-0 -z-10 h-64 opacity-20 blur-3xl pointer-events-none" style={{ backgroundImage: `url(${selectedMovie.backdrop})`, backgroundSize: 'cover' }} />
-                                )}
-                                <div className="flex items-start justify-between gap-4">
-                                    <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase leading-tight">{selectedMovie.title}</h2>
-                                    {trailerKey && !showTrailer && (
-                                        <button
-                                            onClick={() => setShowTrailer(true)}
-                                            className="flex items-center gap-2 rounded-xl bg-indigo-600/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-indigo-400 ring-1 ring-indigo-500/30 hover:bg-indigo-600/20 transition-all active:scale-95"
-                                        >
-                                            <Play className="h-3 w-3 fill-current" /> Trailer
-                                        </button>
-                                    )}
-                                </div>
-                                <div className="mt-4 flex items-center gap-3 text-xs font-bold text-slate-400">
-                                    <span className="bg-slate-800 px-2 py-1 rounded text-white">{selectedMovie.year}</span>
-                                    <span className="flex items-center gap-1 text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded ring-1 ring-yellow-500/20">
-                                        <Star className="h-3 w-3 fill-yellow-500" /> {selectedMovie.rating}
-                                    </span>
-                                    <span className="rounded border border-slate-700 px-2 py-1 uppercase tracking-widest">{selectedMovie.ageRating}</span>
-                                </div>
-                                <p className="mt-8 text-slate-300 leading-relaxed font-medium">
-                                    {selectedMovie.plot}
-                                </p>
+                        <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md" onClick={() => setSelectedMovie(null)} />
 
-                                {/* Availability Info */}
-                                <div className="mt-8">
-                                    {theatricalStatus?.status === 'In Theaters' ? (
-                                        /* Only show In Theaters if currently showing */
-                                        <div className="flex items-center gap-4 rounded-2xl bg-indigo-500/10 p-6 ring-1 ring-indigo-500/50 border-l-4 border-indigo-500 shadow-xl shadow-indigo-500/10">
-                                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500 text-white shadow-lg">
-                                                <Ticket className="h-6 w-6" />
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-400">Exclusive Cinematic Release</p>
-                                                <p className="text-xl font-black text-white flex items-center gap-3 mt-1 italic uppercase">
-                                                    In Theaters Now
-                                                    <span className="text-[10px] bg-indigo-600/20 px-2 py-1 rounded-full text-indigo-300 font-bold tracking-widest ring-1 ring-indigo-500/30 not-italic uppercase">Since {theatricalStatus.date}</span>
-                                                </p>
-                                            </div>
+                        <div className="relative w-full max-w-6xl overflow-hidden rounded-[2.5rem] bg-slate-900 shadow-[0_0_100px_rgba(0,0,0,0.8)] ring-1 ring-white/10 flex flex-col md:flex-row min-h-[600px]">
+                            {/* Backdrop Header (TMDB Style) */}
+                            {selectedMovie.backdrop && (
+                                <div
+                                    className="absolute inset-0 opacity-20 transition-opacity duration-1000 pointer-events-none"
+                                    style={{
+                                        backgroundImage: `url(${selectedMovie.backdrop.replace('w500', 'original')})`,
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center',
+                                        maskImage: 'linear-gradient(to right, black, transparent)'
+                                    }}
+                                />
+                            )}
+
+                            <button onClick={() => setSelectedMovie(null)} className="absolute right-6 top-6 z-50 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 backdrop-blur-md transition-all hover:rotate-90">
+                                <X className="h-6 w-6" />
+                            </button>
+
+                            {/* Left Column: Poster / Trailer */}
+                            <div className="w-full md:w-1/3 p-8 lg:p-12 z-10 flex flex-col gap-6">
+                                <div className="relative aspect-[2/3] w-full overflow-hidden rounded-3xl shadow-2xl ring-1 ring-white/10 group/poster-modal">
+                                    {showTrailer && trailerKey ? (
+                                        <div className="h-full w-full bg-black">
+                                            <iframe
+                                                className="h-full w-full"
+                                                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1`}
+                                                title="YouTube video player"
+                                                frameBorder="0"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                allowFullScreen
+                                            />
+                                            <button
+                                                onClick={() => setShowTrailer(false)}
+                                                className="absolute top-4 left-4 z-20 rounded-full bg-black/80 p-2 text-white hover:bg-black transition-colors"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
                                         </div>
                                     ) : (
-                                        /* Show regular layout if not exclusively in theaters */
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {/* Theatrical / Release Status */}
-                                            {theatricalStatus && (
-                                                <div className="flex items-center gap-4 rounded-2xl bg-slate-800/40 p-4 ring-1 ring-white/5 border-l-4 border-indigo-500">
-                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400">
-                                                        <Ticket className="h-5 w-5" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Release Status</p>
-                                                        <p className="text-sm font-bold text-white flex items-center gap-2">
-                                                            {theatricalStatus.status}
-                                                            <span className="text-[10px] bg-slate-900 px-1.5 py-0.5 rounded text-slate-400">{theatricalStatus.date}</span>
-                                                        </p>
+                                        <>
+                                            <PosterImage src={selectedMovie.poster} alt={selectedMovie.title} className="h-full w-full object-cover" />
+                                            {trailerKey && (
+                                                <div
+                                                    onClick={() => setShowTrailer(true)}
+                                                    className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/40 md:opacity-0 md:group-hover/poster-modal:opacity-100 transition-all duration-500 cursor-pointer backdrop-blur-[2px]"
+                                                >
+                                                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600/90 text-white shadow-[0_0_30px_rgba(79,70,229,0.5)] scale-75 md:group-hover/poster-modal:scale-100 transition-all duration-500">
+                                                        <Play className="h-8 w-8 fill-current ml-1" />
                                                     </div>
                                                 </div>
                                             )}
-
-                                            {/* Streaming/OTT */}
-                                            {(watchProviders?.streaming?.length > 0 || watchProviders?.rent?.length > 0) && (
-                                                <div className="flex items-center gap-4 rounded-2xl bg-slate-800/40 p-4 ring-1 ring-white/5 border-l-4 border-emerald-500 relative overflow-hidden">
-                                                    {providerRegion === 'Global' && (
-                                                        <div className="absolute top-0 right-0 bg-amber-500/20 px-2 py-0.5 text-[8px] font-black uppercase text-amber-500 rounded-bl-lg ring-1 ring-amber-500/30">
-                                                            Not in India
-                                                        </div>
-                                                    )}
-                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
-                                                        <Tv className="h-5 w-5" />
-                                                    </div>
-                                                    <div className="flex-1 overflow-hidden text-left">
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Watch on OTT</p>
-                                                            {providerRegion === 'Global' && <span className="text-[8px] font-bold text-amber-500/80 italic">(US/Global Info)</span>}
-                                                        </div>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            {watchProviders.streaming?.length > 0 ? (
-                                                                <div className="flex items-center gap-3">
-                                                                    {watchProviders.streaming.slice(0, 3).map(p => (
-                                                                        <a
-                                                                            key={p.provider_id}
-                                                                            href={getDirectProviderLink(p.provider_name, selectedMovie.title, selectedMovie.year)}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className="group/platform relative"
-                                                                        >
-                                                                            <img
-                                                                                src={`${TMDB_IMAGE_BASE_URL}${p.logo_path}`}
-                                                                                alt={p.provider_name}
-                                                                                className="h-8 w-8 rounded-lg shadow-lg ring-1 ring-white/10 group-hover/platform:scale-110 group-hover/platform:ring-emerald-500/50 transition-all"
-                                                                                title={`Watch on ${p.provider_name}`}
-                                                                            />
-                                                                            <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-emerald-500 flex items-center justify-center opacity-0 group-hover/platform:opacity-100 transition-opacity ring-2 ring-slate-900 scale-75">
-                                                                                <ExternalLink className="h-2 w-2 text-white" />
-                                                                            </div>
-                                                                        </a>
-                                                                    ))}
-                                                                    {watchProviders.streaming.length > 3 && <span className="text-[10px] font-bold text-slate-500">+{watchProviders.streaming.length - 3}</span>}
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-[10px] font-bold text-slate-400 mr-1 uppercase">Rent/Buy:</span>
-                                                                    {(watchProviders.rent || watchProviders.buy).slice(0, 2).map(p => (
-                                                                        <a
-                                                                            key={p.provider_id}
-                                                                            href={getDirectProviderLink(p.provider_name, selectedMovie.title, selectedMovie.year)}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className="hover:scale-110 transition-transform"
-                                                                        >
-                                                                            <img
-                                                                                src={`${TMDB_IMAGE_BASE_URL}${p.logo_path}`}
-                                                                                alt={p.provider_name}
-                                                                                className="h-6 w-6 rounded shadow-sm opacity-80"
-                                                                                title={`Rent/Buy on ${p.provider_name}`}
-                                                                            />
-                                                                        </a>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
+                                        </>
                                     )}
                                 </div>
-                                <div className="mt-12 flex gap-4">
-                                    <button
-                                        onClick={() => toggleWatchlist(selectedMovie, "Watchlist")}
-                                        className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-4 font-bold transition-all ${watchlist.some(w => w.movieId === selectedMovie.id && w.status === 'Watchlist') ? 'bg-indigo-600/20 text-indigo-400 ring-1 ring-indigo-500/50' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:scale-[1.02]'}`}
-                                    >
-                                        <Bookmark className="h-5 w-5" /> Watchlist
-                                    </button>
-                                    <button
-                                        onClick={() => toggleWatchlist(selectedMovie, "Watched")}
-                                        className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-4 font-bold transition-all ${watchlist.some(w => w.movieId === selectedMovie.id && w.status === 'Watched') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/50' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
-                                    >
-                                        <CheckCircle className="h-5 w-5" /> Watched
-                                    </button>
+
+                                {/* Quick Stats Section */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Release Year</p>
+                                        <p className="text-xl font-black text-white italic">{selectedMovie.year}</p>
+                                    </div>
+                                    <div className="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Duration</p>
+                                        <p className="text-xl font-black text-white italic">{runtime ? `${Math.floor(runtime / 60)}h ${runtime % 60}m` : 'N/A'}</p>
+                                    </div>
                                 </div>
+                            </div>
 
-                                {/* Related Recommended Movies */}
-                                <div className="mt-12 space-y-4">
-                                    <h3 className="text-xs font-black text-indigo-400 uppercase tracking-[0.2em] italic flex items-center gap-2">
-                                        <Flame className="h-4 w-4" /> Related Recommended Movies
-                                    </h3>
+                            {/* Right Column: Content */}
+                            <div className="flex-1 p-8 lg:p-12 z-10 overflow-y-auto max-h-[90vh] no-scrollbar">
+                                <div className="space-y-8">
+                                    {/* Header Info */}
+                                    <div className="space-y-4">
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white italic tracking-tighter uppercase leading-none">
+                                                {selectedMovie.title} <span className="text-slate-500 font-normal ml-2">({selectedMovie.year})</span>
+                                            </h2>
+                                        </div>
 
-                                    {isDetailsLoading ? (
-                                        <div className="flex gap-4 overflow-hidden">
-                                            {[1, 2, 3, 4].map(i => (
-                                                <div key={i} className="min-w-[100px] md:min-w-[130px] aspect-[2/3] rounded-2xl bg-slate-800 animate-pulse" />
+                                        <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-slate-400">
+                                            <span className="bg-white/5 px-2 py-0.5 rounded ring-1 ring-white/10 uppercase tracking-widest text-xs">{selectedMovie.ageRating}</span>
+                                            <div className="h-1 w-1 rounded-full bg-slate-700" />
+                                            <span>{theatricalStatus?.date || 'N/A'} (IN)</span>
+                                            <div className="h-1 w-1 rounded-full bg-slate-700" />
+                                            <span>{selectedMovie.genres.join(', ')}</span>
+                                            <div className="h-1 w-1 rounded-full bg-slate-700" />
+                                            <span className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /> {runtime ? `${Math.floor(runtime / 60)}h ${runtime % 60}m` : 'N/A'}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* User Score & Actions */}
+                                    <div className="flex flex-wrap items-center gap-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="relative h-16 w-16">
+                                                <svg className="h-full w-full" viewBox="0 0 36 36">
+                                                    <path className="stroke-slate-800" strokeWidth="3" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                    <path className="stroke-emerald-500" strokeDasharray={`${selectedMovie.rating * 10}, 100`} strokeLinecap="round" strokeWidth="3" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                </svg>
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <span className="text-lg font-black text-white italic">{Math.round(selectedMovie.rating * 10)}<sup className="text-[10px] ml-0.5">%</sup></span>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs font-black uppercase tracking-widest text-white leading-tight">
+                                                User<br />Score
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <button className="h-12 w-12 flex items-center justify-center rounded-full bg-[#032541] text-white hover:scale-110 transition-transform shadow-lg"><List className="h-4 w-4" /></button>
+                                            <button onClick={() => toggleWatchlist(selectedMovie, "Watched")} className={`h-12 w-12 flex items-center justify-center rounded-full transition-all shadow-lg ${watchlist.some(w => w.movieId === selectedMovie.id && w.status === 'Watched') ? 'bg-emerald-600 text-white' : 'bg-[#032541] text-white hover:scale-110'}`}><Heart className="h-4 w-4" /></button>
+                                            <button onClick={() => toggleWatchlist(selectedMovie, "Watchlist")} className={`h-12 w-12 flex items-center justify-center rounded-full transition-all shadow-lg ${watchlist.some(w => w.movieId === selectedMovie.id && w.status === 'Watchlist') ? 'bg-indigo-600 text-white' : 'bg-[#032541] text-white hover:scale-110'}`}><Bookmark className="h-4 w-4" /></button>
+
+                                            {trailerKey && (
+                                                <button onClick={() => setShowTrailer(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-black text-white hover:text-indigo-400 transition-colors uppercase italic tracking-wider">
+                                                    <Play className="h-4 w-4 fill-current" /> Play Trailer
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Overview */}
+                                    <div className="space-y-4">
+                                        {tagline && <p className="text-lg font-medium italic text-slate-400 opacity-80">"{tagline}"</p>}
+                                        <div className="space-y-2">
+                                            <h3 className="text-xl font-black text-white tracking-tight uppercase italic underline decoration-indigo-500 decoration-4 underline-offset-8">Overview</h3>
+                                            <p className="text-slate-300 leading-relaxed text-lg font-medium max-w-3xl">
+                                                {selectedMovie.plot}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Credits */}
+                                    {movieCredits && (
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 pt-4">
+                                            {movieCredits.crew?.filter(c => ['Director', 'Screenplay', 'Writer', 'Novel'].includes(c.job)).slice(0, 3).map(person => (
+                                                <div key={`${person.id}-${person.job}`} className="space-y-1">
+                                                    <p className="font-black text-white text-lg">{person.name}</p>
+                                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{person.job}</p>
+                                                </div>
                                             ))}
                                         </div>
-                                    ) : similarMovies.length > 0 ? (
-                                        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
+                                    )}
+
+                                    {/* Providers Segment */}
+                                    {watchProviders && (
+                                        <div className="pt-8 space-y-4">
+                                            <h3 className="text-xs font-black text-indigo-400 uppercase tracking-[0.2em] italic">Where to Watch</h3>
+                                            <div className="flex flex-wrap gap-4">
+                                                {watchProviders.streaming?.map(p => (
+                                                    <a key={p.provider_id} href={getDirectProviderLink(p.provider_name, selectedMovie.title, selectedMovie.year)} target="_blank" rel="noopener noreferrer" className="group/ott flex flex-col items-center gap-2">
+                                                        <img src={`${TMDB_IMAGE_BASE_URL}${p.logo_path}`} className="h-12 w-12 rounded-xl ring-1 ring-white/10 group-hover/ott:ring-indigo-500 transition-all shadow-xl" alt={p.provider_name} />
+                                                        <span className="text-[10px] font-bold text-slate-500 uppercase">{p.provider_name}</span>
+                                                    </a>
+                                                ))}
+                                                {!watchProviders.streaming?.length && watchProviders.rent?.map(p => (
+                                                    <a key={p.provider_id} href={getDirectProviderLink(p.provider_name, selectedMovie.title, selectedMovie.year)} target="_blank" rel="noopener noreferrer" className="opacity-60 hover:opacity-100 transition-opacity">
+                                                        <img src={`${TMDB_IMAGE_BASE_URL}${p.logo_path}`} className="h-10 w-10 rounded-lg" alt={p.provider_name} />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Similar Movies */}
+                                    <div className="pt-8 space-y-4">
+                                        <h3 className="text-xs font-black text-indigo-400 uppercase tracking-[0.2em] italic flex items-center gap-2">
+                                            <TrendingUp className="h-4 w-4" /> Recommended for You
+                                        </h3>
+                                        <div className="flex gap-4 overflow-x-auto pb-6 no-scrollbar -mx-2 px-2">
                                             {similarMovies.map(m => (
-                                                <div
-                                                    key={m.id}
-                                                    onClick={() => { setAutoPlayNextMovie(true); setSelectedMovie(m); }}
-                                                    className="min-w-[100px] md:min-w-[130px] cursor-pointer group transition-all"
-                                                >
+                                                <div key={m.id} onClick={() => setSelectedMovie(m)} className="min-w-[120px] lg:min-w-[150px] cursor-pointer group transition-all">
                                                     <div className="relative aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/10 group-hover:ring-indigo-500/50 transition-all shadow-xl">
                                                         <img src={m.poster} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" alt={m.title} />
-                                                        <div className="absolute inset-x-2 bottom-2">
-                                                            <div className="bg-slate-950/80 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] font-bold text-yellow-500 flex items-center gap-1 w-fit">
-                                                                <Star className="h-3 w-3 fill-yellow-500" /> {m.rating}
-                                                            </div>
-                                                        </div>
                                                     </div>
+                                                    <p className="mt-2 text-[10px] font-black text-white italic truncate uppercase">{m.title}</p>
                                                 </div>
                                             ))}
                                         </div>
-                                    ) : (
-                                        <p className="text-xs text-slate-500 italic">No related discoveries found.</p>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
