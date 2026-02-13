@@ -791,7 +791,11 @@ export default function App() {
                         {
                             !isDataLoading && !search && recommendations.length > 0 && (
                                 <section className="space-y-8">
-                                    <HeroCard movie={recommendations[0]} onClick={() => { setAutoPlayNextMovie(true); setSelectedMovie(recommendations[0]); }} />
+                                    <HeroCard
+                                        movie={recommendations[0]}
+                                        onClick={() => setSelectedMovie(recommendations[0])}
+                                        onWatchTrailer={() => { setAutoPlayNextMovie(true); setSelectedMovie(recommendations[0]); }}
+                                    />
 
                                     <div className="space-y-6 pt-12">
                                         <div className="flex items-center justify-between">
@@ -800,7 +804,7 @@ export default function App() {
                                             </h2>
                                         </div>
                                         <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                                            {recommendations.slice(1, 6).map(m => <MovieCard key={m.id} movie={m} onClick={() => { setAutoPlayNextMovie(true); setSelectedMovie(m); }} />)}
+                                            {recommendations.slice(1, 6).map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
                                         </div>
                                     </div>
                                 </section>
@@ -812,7 +816,7 @@ export default function App() {
                                 {search ? `RESULTS FOR "${search}"` : 'TRENDING GLOBALLY'}
                             </h2>
                             <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                                {filteredMovies.map(m => <MovieCard key={m.id} movie={m} onClick={() => { setAutoPlayNextMovie(true); setSelectedMovie(m); }} />)}
+                                {filteredMovies.map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
                             </div>
                         </section>
                     </div >
@@ -1317,7 +1321,7 @@ function Background({ showMarquee = false, marqueePosters = [] }) {
         </div>
     );
 }
-function HeroCard({ movie, onClick }) {
+function HeroCard({ movie, onClick, onWatchTrailer }) {
     return (
         <div className="group relative aspect-[21/9] w-full overflow-hidden rounded-[2.5rem] cursor-pointer ring-1 ring-white/10 shadow-2xl transition-all hover:scale-[1.01] hover:shadow-indigo-500/10 active:scale-100">
             <div className="absolute inset-0 z-10 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" onClick={onClick} />
@@ -1332,7 +1336,7 @@ function HeroCard({ movie, onClick }) {
                 <h1 className="text-6xl font-black text-white italic tracking-tighter uppercase leading-none">{movie.title}</h1>
                 <p className="text-slate-300 text-lg line-clamp-2 md:w-3/4 font-medium opacity-80">{movie.plot}</p>
                 <div className="flex gap-4 pt-4 pointer-events-auto">
-                    <button onClick={onClick} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black tracking-tight uppercase hover:bg-indigo-500 transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20">
+                    <button onClick={onWatchTrailer} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black tracking-tight uppercase hover:bg-indigo-500 transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20">
                         <Play className="h-5 w-5 fill-current" /> Watch Trailer
                     </button>
                     <button onClick={onClick} className="glass-panel text-white px-8 py-3 rounded-2xl font-black tracking-tight uppercase hover:bg-white/10 transition-colors">Details</button>
