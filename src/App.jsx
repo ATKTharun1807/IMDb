@@ -24,7 +24,8 @@ import {
     Ticket,
     Tv,
     ExternalLink,
-    MapPin
+    MapPin,
+    Play
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import {
@@ -127,6 +128,9 @@ export default function App() {
     const [activeTab, setActiveTab] = useState("discover");
     const [error, setError] = useState(null);
     const [isDataLoading, setIsDataLoading] = useState(true);
+    const [trailerKey, setTrailerKey] = useState(null);
+    const [showTrailer, setShowTrailer] = useState(false);
+    const [autoPlayNextMovie, setAutoPlayNextMovie] = useState(false);
 
     // Email Auth States
     const [authMode, setAuthMode] = useState('landing'); // landing, login, register
@@ -264,20 +268,35 @@ export default function App() {
             const headers = { 'Accept': 'application/json' };
 
             // Parallel fetch for speed
-            const [recommendationsRes, providersRes, releasesRes] = await Promise.all([
+            const [recommendationsRes, providersRes, releasesRes, videosRes] = await Promise.all([
                 fetch(`${TMDB_BASE_URL}/movie/${movieId}/recommendations?api_key=${TMDB_API_KEY}`, { headers }),
                 fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`, { headers }),
-                fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`, { headers })
+                fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`, { headers }),
+                fetch(`${TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${TMDB_API_KEY}`, { headers })
             ]);
 
-            const [recData, provData, relData] = await Promise.all([
+            const [recData, provData, relData, videoData] = await Promise.all([
                 recommendationsRes.json(),
                 providersRes.json(),
-                releasesRes.json()
+                releasesRes.json(),
+                videosRes.json()
             ]);
 
             // Set Similar
             setSimilarMovies(recData.results?.map(mapTMDBMovie).slice(0, 6) || []);
+
+            // Set Trailer
+            const trailer = videoData.results?.find(v => v.type === "Trailer" && v.site === "YouTube") ||
+                videoData.results?.find(v => v.site === "YouTube") ||
+                videoData.results?.[0];
+
+            const finalKey = trailer?.site === "YouTube" ? trailer?.key : null;
+            setTrailerKey(finalKey);
+
+            if (finalKey && autoPlayNextMovie) {
+                setShowTrailer(true);
+                setAutoPlayNextMovie(false);
+            }
 
             // Deduplicate providers by name (e.g. Amazon Prime & Amazon Video)
             const deduplicate = (list) => {
@@ -335,11 +354,20 @@ export default function App() {
 
     useEffect(() => {
         if (selectedMovie) {
+            // Reset modal states to prevent showing old movie data while loading
+            setTrailerKey(null);
+            setShowTrailer(false);
+            setWatchProviders(null);
+            setTheatricalStatus(null);
+            setSimilarMovies([]);
             fetchMovieDetails(selectedMovie.id);
         } else {
             setSimilarMovies([]);
             setWatchProviders(null);
             setTheatricalStatus(null);
+            setTrailerKey(null);
+            setShowTrailer(false);
+            setAutoPlayNextMovie(false);
         }
     }, [selectedMovie]);
 
@@ -743,7 +771,7 @@ export default function App() {
                         {
                             !isDataLoading && !search && recommendations.length > 0 && (
                                 <section className="space-y-8">
-                                    <HeroCard movie={recommendations[0]} onClick={() => setSelectedMovie(recommendations[0])} />
+                                    <HeroCard movie={recommendations[0]} onClick={() => { setAutoPlayNextMovie(true); setSelectedMovie(recommendations[0]); }} />
 
                                     <div className="space-y-6 pt-12">
                                         <div className="flex items-center justify-between">
@@ -752,7 +780,7 @@ export default function App() {
                                             </h2>
                                         </div>
                                         <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                                            {recommendations.slice(1, 6).map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
+                                            {recommendations.slice(1, 6).map(m => <MovieCard key={m.id} movie={m} onClick={() => { setAutoPlayNextMovie(true); setSelectedMovie(m); }} />)}
                                         </div>
                                     </div>
                                 </section>
@@ -764,7 +792,7 @@ export default function App() {
                                 {search ? `RESULTS FOR "${search}"` : 'TRENDING GLOBALLY'}
                             </h2>
                             <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                                {filteredMovies.map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
+                                {filteredMovies.map(m => <MovieCard key={m.id} movie={m} onClick={() => { setAutoPlayNextMovie(true); setSelectedMovie(m); }} />)}
                             </div>
                         </section>
                     </div >
@@ -867,20 +895,67 @@ export default function App() {
                         <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setSelectedMovie(null)} />
                         <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-slate-900 ring-1 ring-slate-800 flex flex-col md:flex-row">
                             <button onClick={() => setSelectedMovie(null)} className="absolute right-6 top-6 z-10 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 transition-colors"><X className="h-5 w-5" /></button>
-                            <div className="h-64 w-full md:h-auto md:w-2/5 overflow-hidden bg-slate-950">
-                                <PosterImage src={selectedMovie.poster} alt={selectedMovie.title} className="h-full w-full object-cover" />
-                            </div>
-                            <div className="flex-1 p-8 md:p-10">
-                                {selectedMovie.backdrop && (
-                                    <div className="absolute inset-x-0 top-0 -z-10 h-64 opacity-20 blur-3xl" style={{ backgroundImage: `url(${selectedMovie.backdrop})`, backgroundSize: 'cover' }} />
+                            <div className="h-64 w-full md:h-auto md:w-2/5 overflow-hidden bg-slate-950 relative group/trailer">
+                                {showTrailer && trailerKey ? (
+                                    <div className="relative h-full w-full">
+                                        <iframe
+                                            className="h-full w-full"
+                                            src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1`}
+                                            title="YouTube video player"
+                                            frameBorder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                        ></iframe>
+                                        <button
+                                            onClick={() => setShowTrailer(false)}
+                                            className="absolute top-4 left-4 z-20 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 transition-colors"
+                                            title="Back to Poster"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <PosterImage src={selectedMovie.poster} alt={selectedMovie.title} className="h-full w-full object-cover" />
+                                        {trailerKey && (
+                                            <div
+                                                onClick={() => setShowTrailer(true)}
+                                                className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/40 md:opacity-0 md:group-hover/trailer:opacity-100 transition-all duration-500 cursor-pointer backdrop-blur-[2px]"
+                                            >
+                                                <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-indigo-600 text-white shadow-[0_0_30px_rgba(79,70,229,0.5)] md:scale-75 md:group-hover/trailer:scale-100 transition-all duration-500">
+                                                    <Play className="h-8 w-8 md:h-10 md:w-10 fill-current ml-1" />
+                                                </div>
+                                                <p className="mt-4 text-xs md:text-sm font-black uppercase tracking-[0.2em] text-white drop-shadow-lg">Watch Trailer</p>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
-                                <h2 className="text-3xl font-black text-white">{selectedMovie.title}</h2>
-                                <div className="mt-2 flex items-center gap-3 text-sm text-slate-400">
-                                    <span className="font-bold">{selectedMovie.year}</span>
-                                    <span className="flex items-center gap-1 text-yellow-500"><Star className="h-4 w-4 fill-yellow-500" /> {selectedMovie.rating}</span>
-                                    <span className="rounded border border-slate-700 px-2 py-0.5 uppercase">{selectedMovie.ageRating}</span>
+                            </div>
+                            <div className="flex-1 p-8 md:p-10 relative">
+                                {selectedMovie.backdrop && (
+                                    <div className="absolute inset-x-0 top-0 -z-10 h-64 opacity-20 blur-3xl pointer-events-none" style={{ backgroundImage: `url(${selectedMovie.backdrop})`, backgroundSize: 'cover' }} />
+                                )}
+                                <div className="flex items-start justify-between gap-4">
+                                    <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase leading-tight">{selectedMovie.title}</h2>
+                                    {trailerKey && !showTrailer && (
+                                        <button
+                                            onClick={() => setShowTrailer(true)}
+                                            className="flex items-center gap-2 rounded-xl bg-indigo-600/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-indigo-400 ring-1 ring-indigo-500/30 hover:bg-indigo-600/20 transition-all active:scale-95"
+                                        >
+                                            <Play className="h-3 w-3 fill-current" /> Trailer
+                                        </button>
+                                    )}
                                 </div>
-                                <p className="mt-6 text-slate-300 leading-relaxed">{selectedMovie.plot}</p>
+                                <div className="mt-4 flex items-center gap-3 text-xs font-bold text-slate-400">
+                                    <span className="bg-slate-800 px-2 py-1 rounded text-white">{selectedMovie.year}</span>
+                                    <span className="flex items-center gap-1 text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded ring-1 ring-yellow-500/20">
+                                        <Star className="h-3 w-3 fill-yellow-500" /> {selectedMovie.rating}
+                                    </span>
+                                    <span className="rounded border border-slate-700 px-2 py-1 uppercase tracking-widest">{selectedMovie.ageRating}</span>
+                                </div>
+                                <p className="mt-8 text-slate-300 leading-relaxed font-medium">
+                                    {selectedMovie.plot}
+                                </p>
 
                                 {/* Availability Info */}
                                 <div className="mt-8">
@@ -1017,7 +1092,7 @@ export default function App() {
                                             {similarMovies.map(m => (
                                                 <div
                                                     key={m.id}
-                                                    onClick={() => setSelectedMovie(m)}
+                                                    onClick={() => { setAutoPlayNextMovie(true); setSelectedMovie(m); }}
                                                     className="min-w-[100px] md:min-w-[130px] cursor-pointer group transition-all"
                                                 >
                                                     <div className="relative aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/10 group-hover:ring-indigo-500/50 transition-all shadow-xl">
@@ -1259,14 +1334,13 @@ function Background({ showMarquee = false, marqueePosters = [] }) {
         </div>
     );
 }
-
 function HeroCard({ movie, onClick }) {
     return (
-        <div onClick={onClick} className="group relative aspect-[21/9] w-full overflow-hidden rounded-[2.5rem] cursor-pointer ring-1 ring-white/10 shadow-2xl transition-all hover:scale-[1.01] hover:shadow-indigo-500/10 active:scale-100">
-            <div className="absolute inset-0 z-10 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+        <div className="group relative aspect-[21/9] w-full overflow-hidden rounded-[2.5rem] cursor-pointer ring-1 ring-white/10 shadow-2xl transition-all hover:scale-[1.01] hover:shadow-indigo-500/10 active:scale-100">
+            <div className="absolute inset-0 z-10 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" onClick={onClick} />
             {movie.backdrop && <img src={movie.backdrop.replace('w500', 'original')} className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-105" alt={movie.title} />}
 
-            <div className="absolute bottom-0 left-0 z-20 p-12 space-y-4 max-w-3xl">
+            <div className="absolute bottom-0 left-0 z-20 p-12 space-y-4 max-w-3xl pointer-events-none">
                 <div className="flex items-center gap-3">
                     <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest italic">Featured</span>
                     <span className="flex items-center gap-1 text-yellow-500 font-bold"><Star className="h-4 w-4 fill-yellow-500" /> {movie.rating}</span>
@@ -1274,9 +1348,11 @@ function HeroCard({ movie, onClick }) {
                 </div>
                 <h1 className="text-6xl font-black text-white italic tracking-tighter uppercase leading-none">{movie.title}</h1>
                 <p className="text-slate-300 text-lg line-clamp-2 md:w-3/4 font-medium opacity-80">{movie.plot}</p>
-                <div className="flex gap-4 pt-4">
-                    <button className="bg-white text-slate-950 px-8 py-3 rounded-2xl font-black tracking-tight uppercase hover:bg-slate-100 transition-colors">Details</button>
-                    <button className="glass-panel text-white px-8 py-3 rounded-2xl font-black tracking-tight uppercase hover:bg-white/10 transition-colors">Watchlist</button>
+                <div className="flex gap-4 pt-4 pointer-events-auto">
+                    <button onClick={onClick} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black tracking-tight uppercase hover:bg-indigo-500 transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20">
+                        <Play className="h-5 w-5 fill-current" /> Watch Trailer
+                    </button>
+                    <button onClick={onClick} className="glass-panel text-white px-8 py-3 rounded-2xl font-black tracking-tight uppercase hover:bg-white/10 transition-colors">Details</button>
                 </div>
             </div>
         </div>
@@ -1322,11 +1398,14 @@ function MovieCard({ movie, onClick }) {
                     alt={movie.title}
                     className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-110"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="absolute bottom-4 inset-x-4">
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-400 tracking-wider bg-slate-900/80 backdrop-blur-md px-2 py-1 rounded w-fit italic">
-                            {movie.genres[0]}
-                        </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-950 shadow-2xl scale-75 group-hover:scale-100 transition-all duration-500">
+                        <Play className="h-6 w-6 fill-current ml-0.5" />
+                    </div>
+                </div>
+                <div className="absolute bottom-4 inset-x-4 translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-400 tracking-wider bg-slate-900/80 backdrop-blur-md px-2 py-1 rounded w-fit italic">
+                        {movie.genres[0]}
                     </div>
                 </div>
                 <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
