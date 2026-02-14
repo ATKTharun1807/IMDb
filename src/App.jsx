@@ -917,7 +917,7 @@ export default function App() {
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md" onClick={() => setSelectedMovie(null)} />
 
-                        <div className="relative w-full max-w-6xl overflow-hidden rounded-[2.5rem] bg-slate-900 shadow-[0_0_100px_rgba(0,0,0,0.8)] ring-1 ring-white/10 flex flex-col md:flex-row min-h-[600px]">
+                        <div className={`relative w-full overflow-hidden rounded-[2.5rem] bg-slate-900 shadow-[0_0_100px_rgba(0,0,0,0.8)] ring-1 ring-white/10 flex flex-col md:flex-row min-h-[600px] transition-all duration-500 ${showTrailer ? 'max-w-7xl' : 'max-w-6xl'}`}>
                             {/* Backdrop Header (TMDB Style) */}
                             {selectedMovie.backdrop && (
                                 <div
@@ -938,37 +938,17 @@ export default function App() {
                             {/* Left Column: Poster / Trailer */}
                             <div className="w-full md:w-1/3 p-8 lg:p-12 z-10 flex flex-col gap-6">
                                 <div className="relative aspect-[2/3] w-full overflow-hidden rounded-3xl shadow-2xl ring-1 ring-white/10 group/poster-modal">
-                                    {showTrailer && trailerKey ? (
-                                        <div className="h-full w-full bg-black">
-                                            <iframe
-                                                className="h-full w-full"
-                                                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1`}
-                                                title="YouTube video player"
-                                                frameBorder="0"
-                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                allowFullScreen
-                                            />
-                                            <button
-                                                onClick={() => setShowTrailer(false)}
-                                                className="absolute top-4 left-4 z-20 rounded-full bg-black/80 p-2 text-white hover:bg-black transition-colors"
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </button>
+                                    <PosterImage src={selectedMovie.poster} alt={selectedMovie.title} className="h-full w-full object-cover" />
+                                    {trailerKey && (
+                                        <div
+                                            onClick={() => setShowTrailer(!showTrailer)}
+                                            className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 cursor-pointer backdrop-blur-[2px] ${showTrailer ? 'bg-indigo-600/20 opacity-100' : 'bg-slate-950/40 md:opacity-0 md:group-hover/poster-modal:opacity-100'}`}
+                                        >
+                                            <div className={`flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600/90 text-white shadow-[0_0_30px_rgba(79,70,229,0.5)] transition-all duration-500 ${showTrailer ? 'scale-110 rotate-90' : 'scale-75 md:group-hover/poster-modal:scale-100'}`}>
+                                                {showTrailer ? <X className="h-8 w-8" /> : <Play className="h-8 w-8 fill-current ml-1" />}
+                                            </div>
+                                            {showTrailer && <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-white animate-pulse">Playing Trailer</p>}
                                         </div>
-                                    ) : (
-                                        <>
-                                            <PosterImage src={selectedMovie.poster} alt={selectedMovie.title} className="h-full w-full object-cover" />
-                                            {trailerKey && (
-                                                <div
-                                                    onClick={() => setShowTrailer(true)}
-                                                    className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/40 md:opacity-0 md:group-hover/poster-modal:opacity-100 transition-all duration-500 cursor-pointer backdrop-blur-[2px]"
-                                                >
-                                                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600/90 text-white shadow-[0_0_30px_rgba(79,70,229,0.5)] scale-75 md:group-hover/poster-modal:scale-100 transition-all duration-500">
-                                                        <Play className="h-8 w-8 fill-current ml-1" />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </>
                                     )}
                                 </div>
 
@@ -986,8 +966,29 @@ export default function App() {
                             </div>
 
                             {/* Right Column: Content */}
-                            <div className="flex-1 p-8 lg:p-12 z-10 overflow-y-auto max-h-[90vh] no-scrollbar">
+                            <div className="flex-1 p-8 lg:p-12 z-10 overflow-y-auto max-h-[90vh] no-scrollbar transition-all duration-500">
                                 <div className="space-y-8">
+                                    {/* Trailer Overlay (Premium Big Screen Edition) */}
+                                    {showTrailer && trailerKey && (
+                                        <div className="relative mb-8 w-full overflow-hidden rounded-[2rem] shadow-2xl ring-1 ring-white/10 aspect-video group/trailer-player animate-in fade-in zoom-in duration-700 bg-slate-950">
+                                            <iframe
+                                                className="absolute inset-0 h-full w-full"
+                                                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1`}
+                                                title="YouTube video player"
+                                                frameBorder="0"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                allowFullScreen
+                                            />
+                                            <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-0 group-hover/trailer-player:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => setShowTrailer(false)}
+                                                    className="rounded-full bg-black/60 p-3 text-white hover:bg-black transition-all hover:rotate-90 backdrop-blur-md"
+                                                >
+                                                    <X className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                     {/* Header Info */}
                                     <div className="space-y-4">
                                         <div className="flex flex-wrap items-center gap-3">
@@ -1030,8 +1031,9 @@ export default function App() {
                                             <button onClick={() => toggleWatchlist(selectedMovie, "Watchlist")} className={`h-12 w-12 flex items-center justify-center rounded-full transition-all shadow-lg ${watchlist.some(w => w.movieId === selectedMovie.id && w.status === 'Watchlist') ? 'bg-indigo-600 text-white' : 'bg-[#032541] text-white hover:scale-110'}`}><Bookmark className="h-4 w-4" /></button>
 
                                             {trailerKey && (
-                                                <button onClick={() => setShowTrailer(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-black text-white hover:text-indigo-400 transition-colors uppercase italic tracking-wider">
-                                                    <Play className="h-4 w-4 fill-current" /> Play Trailer
+                                                <button onClick={() => setShowTrailer(!showTrailer)} className={`flex items-center gap-2 px-4 py-2 text-sm font-black transition-colors uppercase italic tracking-wider ${showTrailer ? 'text-indigo-400' : 'text-white hover:text-indigo-400'}`}>
+                                                    {showTrailer ? <X className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
+                                                    {showTrailer ? 'Close Trailer' : 'Play Trailer'}
                                                 </button>
                                             )}
                                         </div>
