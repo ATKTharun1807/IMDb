@@ -264,6 +264,14 @@ export default function App() {
             return `https://www.zee5.com/search?q=${query}`;
         }
 
+        // Anime Specific: Crunchyroll & Funimation
+        if (name.includes('crunchyroll')) {
+            return `https://www.crunchyroll.com/search?q=${query}`;
+        }
+        if (name.includes('funimation')) {
+            return `https://www.funimation.com/search/?q=${query}`;
+        }
+
         // Global fallback for international discovery - JustWatch is great for regional checks
         if (name.includes('justwatch')) {
             return `https://www.justwatch.com/in/search?q=${query}`;
@@ -327,13 +335,11 @@ export default function App() {
             // Set Similar
             setSimilarMovies(recData.results?.map(mapTMDBMovie).slice(0, 6) || []);
 
-            // Set Videos & Select Primary Trailer
-            const videos = videoData.results || [];
+            // Set Videos & Select Primary Trailer (Strictly Trailers Only)
+            const videos = (videoData.results || []).filter(v => v.type === "Trailer");
             setAllVideos(videos);
 
-            const trailer = videos.find(v => v.type === "Trailer" && (v.site === "YouTube" || v.site === "Vimeo")) ||
-                videos.find(v => v.site === "YouTube" || v.site === "Vimeo") ||
-                videos[0];
+            const trailer = videos.find(v => v.site === "YouTube" || v.site === "Vimeo") || videos[0];
 
             setTrailerKey(trailer ? { key: trailer.key, site: trailer.site } : null);
 
@@ -1047,42 +1053,79 @@ export default function App() {
                             {/* Right Column: Content */}
                             <div className="flex-1 p-8 lg:p-12 z-10 overflow-y-auto max-h-[90vh] no-scrollbar transition-all duration-500">
                                 <div className="space-y-8">
-                                    {/* Trailer Player (Support for multiple sites) */}
-                                    {showTrailer && trailerKey && (
-                                        <div className="relative mb-8 w-full overflow-hidden rounded-[2rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 aspect-video group/trailer-player animate-in fade-in zoom-in duration-700 bg-slate-950">
-                                            <iframe
-                                                className="absolute inset-0 h-full w-full"
-                                                src={trailerKey.site === 'YouTube'
-                                                    ? `https://www.youtube.com/embed/${trailerKey.key}?autoplay=1&modestbranding=1&rel=0`
-                                                    : `https://player.vimeo.com/video/${trailerKey.key}?autoplay=1`
-                                                }
-                                                title="Official Video Player"
-                                                frameBorder="0"
-                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                allowFullScreen
-                                            />
-                                            <div className="absolute top-4 right-4 z-20 opacity-0 group-hover/trailer-player:opacity-100 transition-opacity">
-                                                <button
-                                                    onClick={() => setShowTrailer(false)}
-                                                    className="rounded-full bg-black/60 p-3 text-white hover:bg-black transition-all hover:rotate-90 backdrop-blur-md"
-                                                >
-                                                    <X className="h-5 w-5" />
-                                                </button>
-                                            </div>
+                                    {/* Trailer Player (Support for multiple sites & Fallback) */}
+                                    {showTrailer && (
+                                        <div className="relative mb-8 w-full overflow-hidden rounded-[2rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 aspect-video group/trailer-player animate-in fade-in zoom-in duration-700 bg-slate-950 flex flex-col items-center justify-center text-center p-8">
+                                            {trailerKey ? (
+                                                <>
+                                                    <iframe
+                                                        className="absolute inset-0 h-full w-full"
+                                                        src={trailerKey.site === 'YouTube'
+                                                            ? `https://www.youtube.com/embed/${trailerKey.key}?autoplay=1&modestbranding=1&rel=0`
+                                                            : `https://player.vimeo.com/video/${trailerKey.key}?autoplay=1`
+                                                        }
+                                                        title="Official Video Player"
+                                                        frameBorder="0"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        allowFullScreen
+                                                    />
+                                                    <div className="absolute top-4 right-4 z-20 opacity-0 group-hover/trailer-player:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => setShowTrailer(false)}
+                                                            className="rounded-full bg-black/60 p-3 text-white hover:bg-black transition-all hover:rotate-90 backdrop-blur-md"
+                                                        >
+                                                            <X className="h-5 w-5" />
+                                                        </button>
+                                                    </div>
 
-                                            {/* Source Indicator */}
-                                            <div className="absolute bottom-4 left-4 z-20 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest text-indigo-400 ring-1 ring-white/10 opacity-0 group-hover/trailer-player:opacity-100 transition-all">
-                                                Streaming from {trailerKey.site}
-                                            </div>
+                                                    {/* Source Indicator */}
+                                                    <div className="absolute bottom-4 left-4 z-20 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest text-indigo-400 ring-1 ring-white/10 opacity-0 group-hover/trailer-player:opacity-100 transition-all">
+                                                        Streaming from {trailerKey.site}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="space-y-6 max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                                    <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-indigo-600/10 mx-auto ring-1 ring-indigo-500/30">
+                                                        <ExternalLink className="h-10 w-10 text-indigo-500" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">No Direct Trailer Found</h3>
+                                                        <p className="text-slate-400 font-medium text-sm">We couldn't find a video on YouTube or Vimeo, but you can find it on these platforms:</p>
+                                                    </div>
+                                                    <div className="flex flex-wrap justify-center gap-3">
+                                                        {watchProviders?.streaming?.slice(0, 3).map(p => (
+                                                            <a
+                                                                key={p.provider_id}
+                                                                href={getDirectProviderLink(p.provider_name, selectedMovie.title, selectedMovie.year)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="flex items-center gap-2 bg-white/5 hover:bg-indigo-600 px-4 py-2 rounded-xl transition-all font-bold text-xs ring-1 ring-white/10 hover:ring-indigo-500 group/link"
+                                                            >
+                                                                <img src={`${TMDB_IMAGE_BASE_URL}${p.logo_path}`} className="h-5 w-5 rounded-md" alt={p.provider_name} />
+                                                                Watch on {p.provider_name}
+                                                            </a>
+                                                        ))}
+                                                        <a
+                                                            href={`https://www.google.com/search?q=${selectedMovie.title}+${selectedMovie.year}+trailer+crunchyroll+netflix`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-2 bg-slate-900 border border-indigo-500/30 px-4 py-2 rounded-xl transition-all font-bold text-xs hover:bg-indigo-600/20"
+                                                        >
+                                                            <Search className="h-4 w-4 text-indigo-500" /> Search Trailer
+                                                        </a>
+                                                    </div>
+                                                    <button onClick={() => setShowTrailer(false)} className="text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-slate-400 transition-colors">Close Fallback</button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
-                                    {/* Video Selection Hub */}
+                                    {/* Video Selection Hub (Strictly Trailers) */}
                                     {showTrailer && allVideos.length > 1 && (
                                         <div className="space-y-4 pb-8 border-b border-white/5 mb-8">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest italic">Alternative Sources ({allVideos.length})</h3>
-                                                <p className="text-[10px] text-slate-600 font-bold">Try another if the current one is blocked</p>
+                                                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest italic">Official Trailers ({allVideos.length})</h3>
+                                                <p className="text-[10px] text-slate-600 font-bold">Switch source if the current one is blocked in your country</p>
                                             </div>
                                             <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
                                                 {allVideos.map(video => (
@@ -1142,10 +1185,12 @@ export default function App() {
                                             <button onClick={() => toggleWatchlist(selectedMovie, "Watched")} className={`h-12 w-12 flex items-center justify-center rounded-full transition-all shadow-lg ${watchlist.some(w => w.movieId === selectedMovie.id && w.status === 'Watched') ? 'bg-emerald-600 text-white' : 'bg-[#032541] text-white hover:scale-110'}`}><Heart className="h-4 w-4" /></button>
                                             <button onClick={() => toggleWatchlist(selectedMovie, "Watchlist")} className={`h-12 w-12 flex items-center justify-center rounded-full transition-all shadow-lg ${watchlist.some(w => w.movieId === selectedMovie.id && w.status === 'Watchlist') ? 'bg-indigo-600 text-white' : 'bg-[#032541] text-white hover:scale-110'}`}><Bookmark className="h-4 w-4" /></button>
 
-                                            {trailerKey && (
+                                            {(trailerKey || (watchProviders && watchProviders.streaming?.length > 0)) && (
                                                 <button onClick={() => setShowTrailer(!showTrailer)} className={`flex items-center gap-2 px-4 py-2 text-sm font-black transition-colors uppercase italic tracking-wider ${showTrailer ? 'text-indigo-400' : 'text-white hover:text-indigo-400'}`}>
                                                     {showTrailer ? <X className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
-                                                    {showTrailer ? (allVideos.length > 1 ? `Viewing ${trailerKey.site} ${allVideos.find(v => v.key === trailerKey.key)?.type || 'Video'}` : 'Close Trailer') : 'Play Trailer'}
+                                                    {showTrailer ?
+                                                        (trailerKey ? (allVideos.length > 1 ? `Viewing ${trailerKey.site} ${allVideos.find(v => v.key === trailerKey.key)?.type || 'Video'}` : 'Close Player') : 'Close Options')
+                                                        : 'Play Trailer'}
                                                 </button>
                                             )}
                                         </div>
