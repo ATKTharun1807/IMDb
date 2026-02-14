@@ -198,12 +198,39 @@ export default function App() {
     const fetchTrending = async () => {
         try {
             setIsDataLoading(true);
-            const response = await fetch(`${TMDB_BASE_URL}/trending/movie/day?api_key=${TMDB_API_KEY}`);
-            const data = await response.json();
-            setMovies(data.results.map(mapTMDBMovie));
+            // Fetch multiple pages and sources to ensure diverse categories have data
+            const [p1, p2, popular, topRated] = await Promise.all([
+                fetch(`${TMDB_BASE_URL}/trending/movie/day?api_key=${TMDB_API_KEY}&page=1`),
+                fetch(`${TMDB_BASE_URL}/trending/movie/day?api_key=${TMDB_API_KEY}&page=2`),
+                fetch(`${TMDB_BASE_URL}/movie/popular?api_key=${TMDB_API_KEY}&page=1`),
+                fetch(`${TMDB_BASE_URL}/movie/top_rated?api_key=${TMDB_API_KEY}&page=1`)
+            ]);
+
+            const [dataP1, dataP2, dataPop, dataTop] = await Promise.all([
+                p1.json(), p2.json(), popular.json(), topRated.json()
+            ]);
+
+            const allResults = [
+                ...dataP1.results,
+                ...dataP2.results,
+                ...dataPop.results,
+                ...dataTop.results
+            ];
+
+            // Deduplicate by ID
+            const uniqueResults = [];
+            const seenIds = new Set();
+            for (const m of allResults) {
+                if (!seenIds.has(m.id)) {
+                    seenIds.add(m.id);
+                    uniqueResults.push(m);
+                }
+            }
+
+            setMovies(uniqueResults.map(mapTMDBMovie));
         } catch (err) {
-            console.error("Failed to fetch trending movies:", err);
-            setError("Failed to load trending movies.");
+            console.error("Failed to fetch movies:", err);
+            setError("Failed to load movies.");
         } finally {
             setIsDataLoading(false);
         }
@@ -516,9 +543,33 @@ export default function App() {
         return movies.filter(m => {
             const matchesAge = userProfile.ageSafe ? m.ageRating !== "R" : true;
             const matchesGenre = selectedGenre ? m.genres.includes(selectedGenre) : true;
-            return matchesAge && matchesGenre;
+            const matchesQuery = search ? m.title.toLowerCase().includes(search.toLowerCase()) : true;
+            return matchesAge && matchesGenre && matchesQuery;
         });
-    }, [movies, userProfile.ageSafe, selectedGenre]);
+    }, [movies, userProfile.ageSafe, selectedGenre, search]);
+
+    const moviesByCategory = useMemo(() => {
+        if (search) return {};
+        const categories = {};
+
+        // Prioritize favorite genres first
+        const favs = userProfile.favoriteGenres || [];
+        const sortedGenres = [...GENRES].sort((a, b) => {
+            const aFav = favs.includes(a);
+            const bFav = favs.includes(b);
+            if (aFav && !bFav) return -1;
+            if (!aFav && bFav) return 1;
+            return 0;
+        });
+
+        sortedGenres.forEach(genre => {
+            const matches = movies.filter(m => m.genres.includes(genre));
+            if (matches.length > 0) {
+                categories[genre] = matches.sort((a, b) => b.rating - a.rating);
+            }
+        });
+        return categories;
+    }, [movies, userProfile.favoriteGenres, search]);
 
     // --- Actions ---
     const toggleWatchlist = async (movie, status = "Watchlist") => {
@@ -811,13 +862,36 @@ export default function App() {
                             )
                         }
 
-                        <section className="space-y-6 pb-20">
-                            <h2 className="text-3xl font-black text-white italic tracking-tight underline decoration-slate-800 underline-offset-8">
-                                {search ? `RESULTS FOR "${search}"` : 'TRENDING GLOBALLY'}
-                            </h2>
-                            <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                                {filteredMovies.map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
-                            </div>
+                        <section className="space-y-12 pb-20">
+                            {search || selectedGenre ? (
+                                <div className="space-y-6">
+                                    <h2 className="text-3xl font-black text-white italic tracking-tight underline decoration-slate-800 underline-offset-8">
+                                        {search ? `RESULTS FOR "${search}"` : `${selectedGenre.toUpperCase()} COLLECTIONS`}
+                                    </h2>
+                                    <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                                        {filteredMovies.map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-16">
+                                    <div className="space-y-2">
+                                        <h2 className="text-3xl font-black text-white italic tracking-tight flex items-center gap-3">
+                                            <TrendingUp className="h-8 w-8 text-indigo-500" /> BROWSE BY CATEGORY
+                                        </h2>
+                                        <p className="text-slate-500 text-sm font-medium">Curated collections spanning every genre in the multiverse.</p>
+                                    </div>
+
+                                    {Object.entries(moviesByCategory).map(([genre, items]) => (
+                                        <MovieRow
+                                            key={genre}
+                                            title={genre}
+                                            movies={items}
+                                            onClick={setSelectedMovie}
+                                            isFavorite={userProfile.favoriteGenres?.includes(genre)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </section>
                     </div >
                 )
@@ -1411,6 +1485,56 @@ function MovieCard({ movie, onClick }) {
                     <div className="h-1 w-1 rounded-full bg-slate-700" />
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">{movie.genres[0]}</span>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+function MovieRow({ title, movies, onClick, isFavorite }) {
+    const scrollRef = React.useRef(null);
+
+    const scroll = (direction) => {
+        if (scrollRef.current) {
+            const { scrollLeft, clientWidth } = scrollRef.current;
+            const scrollTo = direction === 'left' ? scrollLeft - clientWidth + 200 : scrollLeft + clientWidth - 200;
+            scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+        }
+    };
+
+    return (
+        <div className="group/row space-y-4 relative">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <h3 className={`text-2xl font-black italic tracking-tight uppercase ${isFavorite ? 'text-indigo-400' : 'text-white'}`}>
+                        {title}
+                        {isFavorite && <span className="ml-2 text-[10px] bg-indigo-600/20 text-indigo-400 px-2 py-0.5 rounded-full ring-1 ring-indigo-500/30 font-bold not-italic tracking-widest align-middle">PICK</span>}
+                    </h3>
+                </div>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => scroll('left')}
+                        className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-900 border border-white/5 text-slate-500 hover:text-white hover:bg-slate-800 transition-all opacity-0 group-hover/row:opacity-100"
+                    >
+                        <ChevronRight className="h-4 w-4 rotate-180" />
+                    </button>
+                    <button
+                        onClick={() => scroll('right')}
+                        className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-900 border border-white/5 text-slate-500 hover:text-white hover:bg-slate-800 transition-all opacity-0 group-hover/row:opacity-100"
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </button>
+                </div>
+            </div>
+
+            <div
+                ref={scrollRef}
+                className="flex gap-6 overflow-x-auto pb-4 no-scrollbar -mx-6 px-6 scroll-smooth"
+            >
+                {movies.map(m => (
+                    <div key={m.id} className="min-w-[180px] sm:min-w-[220px] lg:min-w-[260px]">
+                        <MovieCard movie={m} onClick={() => onClick(m)} />
+                    </div>
+                ))}
             </div>
         </div>
     );
