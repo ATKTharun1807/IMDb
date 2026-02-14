@@ -137,6 +137,7 @@ export default function App() {
     const [movieCredits, setMovieCredits] = useState(null);
     const [runtime, setRuntime] = useState(null);
     const [tagline, setTagline] = useState(null);
+    const [allVideos, setAllVideos] = useState([]);
 
     // Email Auth States
     const [authMode, setAuthMode] = useState('landing'); // landing, login, register
@@ -326,15 +327,17 @@ export default function App() {
             // Set Similar
             setSimilarMovies(recData.results?.map(mapTMDBMovie).slice(0, 6) || []);
 
-            // Set Trailer
-            const trailer = videoData.results?.find(v => v.type === "Trailer" && v.site === "YouTube") ||
-                videoData.results?.find(v => v.site === "YouTube") ||
-                videoData.results?.[0];
+            // Set Videos & Select Primary Trailer
+            const videos = videoData.results || [];
+            setAllVideos(videos);
 
-            const finalKey = trailer?.site === "YouTube" ? trailer?.key : null;
-            setTrailerKey(finalKey);
+            const trailer = videos.find(v => v.type === "Trailer" && (v.site === "YouTube" || v.site === "Vimeo")) ||
+                videos.find(v => v.site === "YouTube" || v.site === "Vimeo") ||
+                videos[0];
 
-            if (finalKey && autoPlayNextMovie) {
+            setTrailerKey(trailer ? { key: trailer.key, site: trailer.site } : null);
+
+            if (trailer && autoPlayNextMovie) {
                 setShowTrailer(true);
                 setAutoPlayNextMovie(false);
             }
@@ -397,6 +400,7 @@ export default function App() {
         if (selectedMovie) {
             // Reset modal states to prevent showing old movie data while loading
             setTrailerKey(null);
+            setAllVideos([]);
             setShowTrailer(false);
             setWatchProviders(null);
             setTheatricalStatus(null);
@@ -410,6 +414,7 @@ export default function App() {
             setWatchProviders(null);
             setTheatricalStatus(null);
             setTrailerKey(null);
+            setAllVideos([]);
             setShowTrailer(false);
             setAutoPlayNextMovie(false);
             setMovieCredits(null);
@@ -1042,18 +1047,21 @@ export default function App() {
                             {/* Right Column: Content */}
                             <div className="flex-1 p-8 lg:p-12 z-10 overflow-y-auto max-h-[90vh] no-scrollbar transition-all duration-500">
                                 <div className="space-y-8">
-                                    {/* Trailer Overlay (Premium Big Screen Edition) */}
+                                    {/* Trailer Player (Support for multiple sites) */}
                                     {showTrailer && trailerKey && (
-                                        <div className="relative mb-8 w-full overflow-hidden rounded-[2rem] shadow-2xl ring-1 ring-white/10 aspect-video group/trailer-player animate-in fade-in zoom-in duration-700 bg-slate-950">
+                                        <div className="relative mb-8 w-full overflow-hidden rounded-[2rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 aspect-video group/trailer-player animate-in fade-in zoom-in duration-700 bg-slate-950">
                                             <iframe
                                                 className="absolute inset-0 h-full w-full"
-                                                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1`}
-                                                title="YouTube video player"
+                                                src={trailerKey.site === 'YouTube'
+                                                    ? `https://www.youtube.com/embed/${trailerKey.key}?autoplay=1&modestbranding=1&rel=0`
+                                                    : `https://player.vimeo.com/video/${trailerKey.key}?autoplay=1`
+                                                }
+                                                title="Official Video Player"
                                                 frameBorder="0"
                                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                                 allowFullScreen
                                             />
-                                            <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-0 group-hover/trailer-player:opacity-100 transition-opacity">
+                                            <div className="absolute top-4 right-4 z-20 opacity-0 group-hover/trailer-player:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => setShowTrailer(false)}
                                                     className="rounded-full bg-black/60 p-3 text-white hover:bg-black transition-all hover:rotate-90 backdrop-blur-md"
@@ -1061,8 +1069,38 @@ export default function App() {
                                                     <X className="h-5 w-5" />
                                                 </button>
                                             </div>
+
+                                            {/* Source Indicator */}
+                                            <div className="absolute bottom-4 left-4 z-20 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest text-indigo-400 ring-1 ring-white/10 opacity-0 group-hover/trailer-player:opacity-100 transition-all">
+                                                Streaming from {trailerKey.site}
+                                            </div>
                                         </div>
                                     )}
+
+                                    {/* Video Selection Hub */}
+                                    {showTrailer && allVideos.length > 1 && (
+                                        <div className="space-y-4 pb-8 border-b border-white/5 mb-8">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest italic">Alternative Sources ({allVideos.length})</h3>
+                                                <p className="text-[10px] text-slate-600 font-bold">Try another if the current one is blocked</p>
+                                            </div>
+                                            <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
+                                                {allVideos.map(video => (
+                                                    <button
+                                                        key={video.id}
+                                                        onClick={() => setTrailerKey({ key: video.key, site: video.site })}
+                                                        className={`shrink-0 px-5 py-3 rounded-2xl text-xs font-black transition-all border-2 ${trailerKey?.key === video.key ? 'bg-indigo-600 border-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.3)] scale-105' : 'bg-slate-900/50 border-white/5 text-slate-400 hover:border-indigo-500/50 hover:text-white'}`}
+                                                    >
+                                                        <div className="flex flex-col items-start gap-1">
+                                                            <span className="truncate max-w-[150px]">{video.name}</span>
+                                                            <span className="text-[9px] opacity-60 uppercase tracking-tighter">{video.type} • {video.site}</span>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Header Info */}
                                     <div className="space-y-4">
                                         <div className="flex flex-wrap items-center gap-3">
@@ -1107,7 +1145,7 @@ export default function App() {
                                             {trailerKey && (
                                                 <button onClick={() => setShowTrailer(!showTrailer)} className={`flex items-center gap-2 px-4 py-2 text-sm font-black transition-colors uppercase italic tracking-wider ${showTrailer ? 'text-indigo-400' : 'text-white hover:text-indigo-400'}`}>
                                                     {showTrailer ? <X className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
-                                                    {showTrailer ? 'Close Trailer' : 'Play Trailer'}
+                                                    {showTrailer ? (allVideos.length > 1 ? `Viewing ${trailerKey.site} ${allVideos.find(v => v.key === trailerKey.key)?.type || 'Video'}` : 'Close Trailer') : 'Play Trailer'}
                                                 </button>
                                             )}
                                         </div>
