@@ -125,6 +125,7 @@ export default function App() {
     const [watchProviders, setWatchProviders] = useState(null);
     const [providerRegion, setProviderRegion] = useState(null); // 'IN' or 'Global'
     const [theatricalStatus, setTheatricalStatus] = useState(null);
+    const [ottStatus, setOttStatus] = useState(null);
     const [isDetailsLoading, setIsDetailsLoading] = useState(false);
     const [selectedGenre, setSelectedGenre] = useState(null);
     const [activeTab, setActiveTab] = useState("discover");
@@ -395,6 +396,22 @@ export default function App() {
                 setTheatricalStatus(null);
             }
 
+            // Set OTT Release Status (Type 4 is Digital)
+            const allReleases = relData.results?.flatMap(r => r.release_dates.map(rd => ({ ...rd, country: r.iso_3166_1 }))) || [];
+            const digitalRelease = allReleases
+                .filter(r => r.type === 4)
+                .sort((a, b) => new Date(a.release_date) - new Date(b.release_date))[0];
+
+            if (digitalRelease) {
+                const ottDate = new Date(digitalRelease.release_date);
+                setOttStatus({
+                    date: ottDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+                    country: digitalRelease.country
+                });
+            } else {
+                setOttStatus(null);
+            }
+
         } catch (err) {
             console.error("Failed to fetch movie details:", err);
         } finally {
@@ -410,6 +427,7 @@ export default function App() {
             setShowTrailer(false);
             setWatchProviders(null);
             setTheatricalStatus(null);
+            setOttStatus(null);
             setSimilarMovies([]);
             setMovieCredits(null);
             setRuntime(null);
@@ -419,6 +437,7 @@ export default function App() {
             setSimilarMovies([]);
             setWatchProviders(null);
             setTheatricalStatus(null);
+            setOttStatus(null);
             setTrailerKey(null);
             setAllVideos([]);
             setShowTrailer(false);
@@ -1155,8 +1174,14 @@ export default function App() {
                                         <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-slate-400">
                                             <span className="bg-white/5 px-2 py-0.5 rounded ring-1 ring-white/10 uppercase tracking-widest text-xs">{selectedMovie.ageRating}</span>
                                             <div className="h-1 w-1 rounded-full bg-slate-700" />
-                                            <span>{theatricalStatus?.date || 'N/A'} (IN)</span>
+                                            <span>{theatricalStatus?.date || 'N/A'} (Theatrical)</span>
                                             <div className="h-1 w-1 rounded-full bg-slate-700" />
+                                            {ottStatus && (
+                                                <>
+                                                    <span className="text-emerald-400">OTT: {ottStatus.date}</span>
+                                                    <div className="h-1 w-1 rounded-full bg-slate-700" />
+                                                </>
+                                            )}
                                             <span>{selectedMovie.genres.join(', ')}</span>
                                             <div className="h-1 w-1 rounded-full bg-slate-700" />
                                             <span className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /> {runtime ? `${Math.floor(runtime / 60)}h ${runtime % 60}m` : 'N/A'}</span>
