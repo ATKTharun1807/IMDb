@@ -194,7 +194,8 @@ export default function App() {
         ageRating: m.adult ? "R" : "PG-13",
         poster: m.poster_path ? `${TMDB_IMAGE_BASE_URL}${m.poster_path}` : "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=800",
         backdrop: m.backdrop_path ? `${TMDB_IMAGE_BASE_URL}${m.backdrop_path}` : null,
-        plot: m.overview || "No description available."
+        plot: m.overview || "No description available.",
+        language: m.original_language
     });
 
     const fetchTrending = async () => {
@@ -294,7 +295,8 @@ export default function App() {
         }
         try {
             setIsDataLoading(true);
-            const response = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`);
+            const langParam = selectedLanguage ? `&with_original_language=${selectedLanguage}` : "";
+            const response = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}${langParam}`);
             const data = await response.json();
             setMovies(data.results.map(mapTMDBMovie));
         } catch (err) {
@@ -573,10 +575,10 @@ export default function App() {
         return movies.filter(m => {
             const matchesAge = userProfile.ageSafe ? m.ageRating !== "R" : true;
             const matchesGenre = selectedGenre ? m.genres.includes(selectedGenre) : true;
-            const matchesQuery = search ? m.title.toLowerCase().includes(search.toLowerCase()) : true;
-            return matchesAge && matchesGenre && matchesQuery;
+            // Removed strict title check because TMDB search is smarter than simple includes()
+            return matchesAge && matchesGenre;
         });
-    }, [movies, userProfile.ageSafe, selectedGenre, search]);
+    }, [movies, userProfile.ageSafe, selectedGenre]);
 
     const moviesByCategory = useMemo(() => {
         if (search) return {};
