@@ -138,6 +138,10 @@ export default function App() {
     const [movieCredits, setMovieCredits] = useState(null);
     const [runtime, setRuntime] = useState(null);
     const [tagline, setTagline] = useState(null);
+    const [seasons, setSeasons] = useState(null);
+    const [selectedSeason, setSelectedSeason] = useState(null);
+    const [episodes, setEpisodes] = useState(null);
+    const [isEpisodesLoading, setIsEpisodesLoading] = useState(false);
     const [allVideos, setAllVideos] = useState([]);
 
     // Email Auth States
@@ -345,6 +349,7 @@ export default function App() {
             setRuntime(type === 'tv' ? (detailsData.episode_run_time?.[0] || null) : detailsData.runtime);
             setTagline(detailsData.tagline);
             setMovieCredits(creditsData);
+            setSeasons(type === 'tv' ? detailsData.seasons : null);
 
             // Set Similar
             setSimilarMovies(recData.results?.map(mapTMDBMovie).slice(0, 6) || []);
@@ -467,6 +472,9 @@ export default function App() {
             setMovieCredits(null);
             setRuntime(null);
             setTagline(null);
+            setSeasons(null);
+            setSelectedSeason(null);
+            setEpisodes(null);
         }
     }, [selectedMovie]);
 
@@ -492,6 +500,23 @@ export default function App() {
         }, 500);
         return () => clearTimeout(timer);
     }, [search]);
+
+    useEffect(() => {
+        const fetchEpisodes = async () => {
+            if (!selectedMovie || selectedMovie.mediaType !== 'tv' || selectedSeason === null) return;
+            try {
+                setIsEpisodesLoading(true);
+                const response = await fetch(`${TMDB_BASE_URL}/tv/${selectedMovie.id}/season/${selectedSeason}?api_key=${TMDB_API_KEY}`);
+                const data = await response.json();
+                setEpisodes(data.episodes);
+            } catch (err) {
+                console.error("Failed to fetch episodes:", err);
+            } finally {
+                setIsEpisodesLoading(false);
+            }
+        };
+        fetchEpisodes();
+    }, [selectedSeason, selectedMovie]);
 
     // --- Data Sync Logic ---
     useEffect(() => {
@@ -1293,6 +1318,74 @@ export default function App() {
                                                     </a>
                                                 ))}
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {/* Seasons Segment */}
+                                    {seasons && seasons.length > 0 && (
+                                        <div className="pt-8 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-xs font-black text-indigo-400 uppercase tracking-[0.2em] italic">Seasons</h3>
+                                            </div>
+                                            <div className="flex gap-4 overflow-x-auto pb-6 no-scrollbar -mx-2 px-2">
+                                                {seasons.filter(s => s.season_number > 0).map(s => (
+                                                    <button 
+                                                        key={s.id} 
+                                                        onClick={() => setSelectedSeason(s.season_number === selectedSeason ? null : s.season_number)}
+                                                        className={`min-w-[140px] p-4 rounded-2xl flex flex-col items-start gap-2 transition-all shadow-xl ring-1 ${selectedSeason === s.season_number ? 'bg-indigo-600 ring-indigo-500 scale-105' : 'bg-slate-900/50 ring-white/10 hover:ring-indigo-500/50'}`}
+                                                    >
+                                                        <span className="text-sm font-black text-white italic truncate uppercase w-full text-left">{s.name}</span>
+                                                        <span className="text-[10px] font-bold text-indigo-400 bg-indigo-950/50 px-2 py-1 rounded-md">{s.episode_count} Episodes</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            
+                                            {/* Episodes View */}
+                                            {selectedSeason !== null && (
+                                                <div className="mt-4 p-6 rounded-2xl bg-slate-900/80 ring-1 ring-white/10 border-t-4 border-indigo-600 animate-in slide-in-from-top-4 fade-in duration-300">
+                                                    {isEpisodesLoading ? (
+                                                        <div className="flex justify-center p-8"><Film className="animate-spin text-indigo-500 h-8 w-8" /></div>
+                                                    ) : episodes ? (
+                                                        <div className="space-y-4">
+                                                            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                                                                <h4 className="text-lg font-bold text-white tracking-tight">Season {selectedSeason}</h4>
+                                                                <button onClick={() => setSelectedSeason(null)} className="text-slate-500 hover:text-white transition-colors"><X className="h-5 w-5"/></button>
+                                                            </div>
+                                                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 no-scrollbar pt-2">
+                                                                {episodes.map(ep => (
+                                                                    <div key={ep.id} className="flex gap-4 group">
+                                                                        {ep.still_path ? (
+                                                                            <img src={`${TMDB_IMAGE_BASE_URL}${ep.still_path}`} className="h-20 w-32 object-cover rounded-xl shadow-lg ring-1 ring-white/10 group-hover:ring-indigo-500 transition-all shrink-0" alt={ep.name} />
+                                                                        ) : (
+                                                                            <div className="h-20 w-32 bg-slate-800 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-white/10"> <Film className="h-6 w-6 text-slate-600" /> </div>
+                                                                        )}
+                                                                        <div className="flex flex-col flex-1 pl-2">
+                                                                            <div className="flex items-start justify-between">
+                                                                                <h5 className="text-sm font-bold text-white line-clamp-1 group-hover:text-indigo-400 transition-colors">
+                                                                                    {ep.episode_number}. {ep.name}
+                                                                                </h5>
+                                                                                <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap ml-2 bg-black/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                                                    <Star className="h-3 w-3 inline text-yellow-500" /> {ep.vote_average?.toFixed(1) || 'N/A'}
+                                                                                </span>
+                                                                            </div>
+                                                                            <p className="text-[10px] text-slate-500 mt-1 font-medium tracking-wide">
+                                                                                {ep.runtime ? `${ep.runtime} min` : ''} 
+                                                                                {ep.runtime && ep.air_date ? ' • ' : ''}
+                                                                                {ep.air_date ? new Date(ep.air_date).toLocaleDateString() : ''}
+                                                                            </p>
+                                                                            <p className="text-xs text-slate-300 mt-2 line-clamp-2 leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
+                                                                                {ep.overview || "No description available for this episode."}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-slate-500 text-sm text-center">No episodes found.</p>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
