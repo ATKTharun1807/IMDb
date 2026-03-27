@@ -195,45 +195,54 @@ export default function App() {
         poster: m.poster_path ? `${TMDB_IMAGE_BASE_URL}${m.poster_path}` : "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=800",
         backdrop: m.backdrop_path ? `${TMDB_IMAGE_BASE_URL}${m.backdrop_path}` : null,
         plot: m.overview || "No description available.",
-        language: m.original_language
+        language: m.original_language,
+        mediaType: m.media_type || (m.first_air_date ? 'tv' : 'movie')
     });
 
-    const fetchTrending = async () => {
+    const fetchTrending = async (tab = activeTab) => {
         try {
             setIsDataLoading(true);
-            // Fetch multiple pages and sources to ensure diverse categories have data
-            const [p1, p2, popular, topRated] = await Promise.all([
-                fetch(`${TMDB_BASE_URL}/trending/movie/day?api_key=${TMDB_API_KEY}&page=1`),
-                fetch(`${TMDB_BASE_URL}/trending/movie/day?api_key=${TMDB_API_KEY}&page=2`),
-                fetch(`${TMDB_BASE_URL}/movie/popular?api_key=${TMDB_API_KEY}&page=1`),
-                fetch(`${TMDB_BASE_URL}/movie/top_rated?api_key=${TMDB_API_KEY}&page=1`)
-            ]);
-
-            const [dataP1, dataP2, dataPop, dataTop] = await Promise.all([
-                p1.json(), p2.json(), popular.json(), topRated.json()
-            ]);
-
-            const allResults = [
-                ...dataP1.results,
-                ...dataP2.results,
-                ...dataPop.results,
-                ...dataTop.results
-            ];
+            let allResults = [];
+            
+            if (tab === 'series') {
+                const [p1, p2, popular, topRated] = await Promise.all([
+                    fetch(`${TMDB_BASE_URL}/trending/tv/day?api_key=${TMDB_API_KEY}&page=1`),
+                    fetch(`${TMDB_BASE_URL}/trending/tv/day?api_key=${TMDB_API_KEY}&page=2`),
+                    fetch(`${TMDB_BASE_URL}/tv/popular?api_key=${TMDB_API_KEY}&page=1`),
+                    fetch(`${TMDB_BASE_URL}/tv/top_rated?api_key=${TMDB_API_KEY}&page=1`)
+                ]);
+                const [dataP1, dataP2, dataPop, dataTop] = await Promise.all([
+                    p1.json(), p2.json(), popular.json(), topRated.json()
+                ]);
+                allResults = [...dataP1.results, ...dataP2.results, ...dataPop.results, ...dataTop.results];
+            } else {
+                const [p1, p2, popular, topRated] = await Promise.all([
+                    fetch(`${TMDB_BASE_URL}/trending/movie/day?api_key=${TMDB_API_KEY}&page=1`),
+                    fetch(`${TMDB_BASE_URL}/trending/movie/day?api_key=${TMDB_API_KEY}&page=2`),
+                    fetch(`${TMDB_BASE_URL}/movie/popular?api_key=${TMDB_API_KEY}&page=1`),
+                    fetch(`${TMDB_BASE_URL}/movie/top_rated?api_key=${TMDB_API_KEY}&page=1`)
+                ]);
+                const [dataP1, dataP2, dataPop, dataTop] = await Promise.all([
+                    p1.json(), p2.json(), popular.json(), topRated.json()
+                ]);
+                allResults = [...dataP1.results, ...dataP2.results, ...dataPop.results, ...dataTop.results];
+            }
 
             // Deduplicate by ID
             const uniqueResults = [];
             const seenIds = new Set();
             for (const m of allResults) {
-                if (!seenIds.has(m.id)) {
-                    seenIds.add(m.id);
+                const uniqueKey = m.id + "-" + (m.media_type || (m.first_air_date ? 'tv' : 'movie'));
+                if (!seenIds.has(uniqueKey)) {
+                    seenIds.add(uniqueKey);
                     uniqueResults.push(m);
                 }
             }
 
             setMovies(uniqueResults.map(mapTMDBMovie));
         } catch (err) {
-            console.error("Failed to fetch movies:", err);
-            setError("Failed to load movies.");
+            console.error("Failed to fetch content:", err);
+            setError("Failed to load content.");
         } finally {
             setIsDataLoading(false);
         }
@@ -288,17 +297,18 @@ export default function App() {
         return `https://www.google.com/search?q=where+to+watch+${query}+${movieYear}+online+streaming`;
     };
 
-    const searchMovies = async (query) => {
+    const searchMovies = async (query, tab = activeTab) => {
         if (!query) {
-            fetchTrending();
+            fetchTrending(tab);
             return;
         }
         try {
             setIsDataLoading(true);
             const langParam = selectedLanguage ? `&with_original_language=${selectedLanguage}` : "";
-            const response = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}${langParam}`);
+            const endpoint = tab === 'series' ? 'search/tv' : 'search/movie';
+            const response = await fetch(`${TMDB_BASE_URL}/${endpoint}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}${langParam}`);
             const data = await response.json();
-            setMovies(data.results.map(mapTMDBMovie));
+            setMovies(data.results.filter(m => m.media_type !== 'person').map(mapTMDBMovie));
         } catch (err) {
             console.error("Search failed:", err);
         } finally {
@@ -306,20 +316,21 @@ export default function App() {
         }
     };
 
-    const fetchMovieDetails = async (movieId) => {
+    const fetchMovieDetails = async (movieId, mediaType = 'movie') => {
         if (!movieId) return;
         try {
             setIsDetailsLoading(true);
             const headers = { 'Accept': 'application/json' };
+            const type = mediaType === 'tv' ? 'tv' : 'movie';
 
             // Parallel fetch for speed
             const [recommendationsRes, providersRes, releasesRes, videosRes, detailsRes, creditsRes] = await Promise.all([
-                fetch(`${TMDB_BASE_URL}/movie/${movieId}/recommendations?api_key=${TMDB_API_KEY}`, { headers }),
-                fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`, { headers }),
-                fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`, { headers }),
-                fetch(`${TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${TMDB_API_KEY}`, { headers }),
-                fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}`, { headers }),
-                fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}`, { headers })
+                fetch(`${TMDB_BASE_URL}/${type}/${movieId}/recommendations?api_key=${TMDB_API_KEY}`, { headers }),
+                fetch(`${TMDB_BASE_URL}/${type}/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`, { headers }),
+                fetch(`${TMDB_BASE_URL}/${type}/${movieId}/${type === 'tv' ? 'content_ratings' : 'release_dates'}?api_key=${TMDB_API_KEY}`, { headers }),
+                fetch(`${TMDB_BASE_URL}/${type}/${movieId}/videos?api_key=${TMDB_API_KEY}`, { headers }),
+                fetch(`${TMDB_BASE_URL}/${type}/${movieId}?api_key=${TMDB_API_KEY}`, { headers }),
+                fetch(`${TMDB_BASE_URL}/${type}/${movieId}/credits?api_key=${TMDB_API_KEY}`, { headers })
             ]);
 
             const [recData, provData, relData, videoData, detailsData, creditsData] = await Promise.all([
@@ -331,7 +342,7 @@ export default function App() {
                 creditsRes.json()
             ]);
 
-            setRuntime(detailsData.runtime);
+            setRuntime(type === 'tv' ? (detailsData.episode_run_time?.[0] || null) : detailsData.runtime);
             setTagline(detailsData.tagline);
             setMovieCredits(creditsData);
 
@@ -378,39 +389,48 @@ export default function App() {
             setWatchProviders(availableProviders);
             setProviderRegion(region);
 
-            // Set Theatrical Status
-            const indianReleases = relData.results?.find(r => r.iso_3166_1 === 'IN') || relData.results?.find(r => r.iso_3166_1 === 'US');
-            const latestRelease = indianReleases?.release_dates?.sort((a, b) => new Date(b.release_date) - new Date(a.release_date))[0];
+            if (type === 'movie') {
+                // Set Theatrical Status
+                const indianReleases = relData.results?.find(r => r.iso_3166_1 === 'IN') || relData.results?.find(r => r.iso_3166_1 === 'US');
+                const latestRelease = indianReleases?.release_dates?.sort((a, b) => new Date(b.release_date) - new Date(a.release_date))[0];
 
-            if (latestRelease) {
-                const releaseDate = new Date(latestRelease.release_date);
-                const now = new Date();
-                let status = "Released";
-                if (releaseDate > now) status = "Upcoming";
-                else if (now.getTime() - releaseDate.getTime() < 30 * 24 * 60 * 60 * 1000) status = "In Theaters";
+                if (latestRelease) {
+                    const releaseDate = new Date(latestRelease.release_date);
+                    const now = new Date();
+                    let status = "Released";
+                    if (releaseDate > now) status = "Upcoming";
+                    else if (now.getTime() - releaseDate.getTime() < 30 * 24 * 60 * 60 * 1000) status = "In Theaters";
 
+                    setTheatricalStatus({
+                        date: releaseDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+                        status: status,
+                        type: latestRelease.type // 3 is theatrical
+                    });
+                } else {
+                    setTheatricalStatus(null);
+                }
+
+                // Set OTT Release Status (Type 4 is Digital)
+                const allReleases = relData.results?.flatMap(r => r.release_dates.map(rd => ({ ...rd, country: r.iso_3166_1 }))) || [];
+                const digitalRelease = allReleases
+                    .filter(r => r.type === 4)
+                    .sort((a, b) => new Date(a.release_date) - new Date(b.release_date))[0];
+
+                if (digitalRelease) {
+                    const ottDate = new Date(digitalRelease.release_date);
+                    setOttStatus({
+                        date: ottDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+                        country: digitalRelease.country
+                    });
+                } else {
+                    setOttStatus(null);
+                }
+            } else {
                 setTheatricalStatus({
-                    date: releaseDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-                    status: status,
-                    type: latestRelease.type // 3 is theatrical
+                    date: detailsData.first_air_date ? new Date(detailsData.first_air_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A',
+                    status: detailsData.status || "Released",
+                    type: "TV"
                 });
-            } else {
-                setTheatricalStatus(null);
-            }
-
-            // Set OTT Release Status (Type 4 is Digital)
-            const allReleases = relData.results?.flatMap(r => r.release_dates.map(rd => ({ ...rd, country: r.iso_3166_1 }))) || [];
-            const digitalRelease = allReleases
-                .filter(r => r.type === 4)
-                .sort((a, b) => new Date(a.release_date) - new Date(b.release_date))[0];
-
-            if (digitalRelease) {
-                const ottDate = new Date(digitalRelease.release_date);
-                setOttStatus({
-                    date: ottDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-                    country: digitalRelease.country
-                });
-            } else {
                 setOttStatus(null);
             }
 
@@ -434,7 +454,7 @@ export default function App() {
             setMovieCredits(null);
             setRuntime(null);
             setTagline(null);
-            fetchMovieDetails(selectedMovie.id);
+            fetchMovieDetails(selectedMovie.id, selectedMovie.mediaType);
         } else {
             setSimilarMovies([]);
             setWatchProviders(null);
@@ -451,15 +471,23 @@ export default function App() {
     }, [selectedMovie]);
 
     useEffect(() => {
-        fetchTrending();
-    }, []);
+        if (activeTab === 'discover' || activeTab === 'series') {
+            if (search) {
+                searchMovies(search, activeTab);
+            } else {
+                fetchTrending(activeTab);
+            }
+        }
+    }, [activeTab]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (search) {
-                searchMovies(search);
-            } else {
-                fetchTrending();
+            if (activeTab === 'discover' || activeTab === 'series') {
+                if (search) {
+                    searchMovies(search, activeTab);
+                } else {
+                    fetchTrending(activeTab);
+                }
             }
         }, 500);
         return () => clearTimeout(timer);
@@ -617,6 +645,7 @@ export default function App() {
                 title: movie.title,
                 poster: movie.poster,
                 status: status,
+                mediaType: movie.mediaType || 'movie',
                 timestamp: Date.now()
             });
         }
@@ -790,7 +819,8 @@ export default function App() {
                     </div>
 
                     <div className="hidden items-center gap-8 md:flex">
-                        <NavBtn icon={<TrendingUp className="h-4 w-4" />} label="Discover" active={activeTab === 'discover'} onClick={() => setActiveTab('discover')} />
+                        <NavBtn icon={<Film className="h-4 w-4" />} label="Movies" active={activeTab === 'discover'} onClick={() => setActiveTab('discover')} />
+                        <NavBtn icon={<Tv className="h-4 w-4" />} label="Series" active={activeTab === 'series'} onClick={() => setActiveTab('series')} />
                         <NavBtn icon={<Bookmark className="h-4 w-4" />} label="Diary" active={activeTab === 'watchlist'} onClick={() => setActiveTab('watchlist')} />
                         <NavBtn icon={<User className="h-4 w-4" />} label="Profile" active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
                     </div>
@@ -813,7 +843,7 @@ export default function App() {
             </nav>
 
             <main className="relative z-10 mx-auto max-w-7xl px-6 py-8">
-                {activeTab === 'discover' && (
+                {(activeTab === 'discover' || activeTab === 'series') && (
                     <div className="space-y-16">
                         {/* Search Bar - Floating */}
                         <div className="flex flex-col items-center gap-8 py-8 md:py-16">
