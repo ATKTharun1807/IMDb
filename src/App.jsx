@@ -867,14 +867,24 @@ export default function App() {
                 </div>
             </nav>
 
-            <main className="relative z-10 mx-auto max-w-7xl px-6 py-8">
+            {/* Mobile Bottom Navigation */}
+            <nav className="fixed bottom-0 left-0 right-0 z-[100] border-t border-white/5 bg-slate-950/90 backdrop-blur-xl md:hidden">
+                <div className="flex items-center justify-around px-4 py-3">
+                    <MobileNavBtn icon={<Film className="h-5 w-5" />} active={activeTab === 'discover'} onClick={() => setActiveTab('discover')} />
+                    <MobileNavBtn icon={<Tv className="h-5 w-5" />} active={activeTab === 'series'} onClick={() => setActiveTab('series')} />
+                    <MobileNavBtn icon={<Bookmark className="h-5 w-5" />} active={activeTab === 'watchlist'} onClick={() => setActiveTab('watchlist')} />
+                    <MobileNavBtn icon={<User className="h-5 w-5" />} active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
+                </div>
+            </nav>
+
+            <main className="relative z-10 mx-auto max-w-7xl px-4 md:px-6 py-6 md:py-12 pb-24 md:pb-12">
                 {(activeTab === 'discover' || activeTab === 'series') && (
-                    <div className="space-y-16">
+                    <div className="space-y-8 md:space-y-16">
                         {/* Search Bar - Floating */}
-                        <div className="flex flex-col items-center gap-8 py-8 md:py-16">
-                            <div className="text-center space-y-4 max-w-2xl px-4">
-                                <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white uppercase italic">Explore the <span className="text-indigo-500 text-glow">Multiverse</span> of Cinema</h1>
-                                <p className="text-slate-400 font-medium">Personalized recommendations powered by real-time TMDB data.</p>
+                        <div className="flex flex-col items-center gap-6 py-6 md:py-16">
+                            <div className="text-center space-y-3 max-w-2xl px-4">
+                                <h1 className="text-3xl md:text-6xl font-black tracking-tighter text-white uppercase italic leading-none">Explore the <span className="text-indigo-500 text-glow">Multiverse</span> of Cinema</h1>
+                                <p className="text-slate-400 font-medium text-xs md:text-base">Personalized recommendations powered by real-time TMDB data.</p>
                             </div>
                             <div className="relative w-full max-w-3xl group">
                                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 opacity-20 blur transition duration-500 group-focus-within:opacity-50 group-hover:opacity-40" />
@@ -883,7 +893,7 @@ export default function App() {
                                     <input
                                         type="text"
                                         placeholder="What are you in the mood for?"
-                                        className="w-full bg-transparent py-6 pl-16 pr-4 text-xl text-white focus:outline-none placeholder:text-slate-600"
+                                        className="w-full bg-transparent py-4 md:py-6 pl-14 md:pl-16 pr-4 text-lg md:text-xl text-white focus:outline-none placeholder:text-slate-600"
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
                                     />
@@ -941,7 +951,7 @@ export default function App() {
                                                 <Flame className="h-8 w-8 text-indigo-500" /> TOP PICKS FOR YOU
                                             </h2>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                                        <div className="grid grid-cols-2 gap-4 sm:gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                                             {recommendations.slice(1, 6).map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
                                         </div>
                                     </div>
@@ -955,7 +965,7 @@ export default function App() {
                                     <h2 className="text-3xl font-black text-white italic tracking-tight underline decoration-slate-800 underline-offset-8">
                                         {search ? `RESULTS FOR "${search}"` : `${selectedGenre.toUpperCase()} COLLECTIONS`}
                                     </h2>
-                                    <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                                    <div className="grid grid-cols-2 gap-4 sm:gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                                         {filteredMovies.map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
                                     </div>
                                 </div>
@@ -995,13 +1005,13 @@ export default function App() {
                                     <button onClick={() => setActiveTab('discover')} className="mt-6 rounded-full bg-indigo-600 px-6 py-2 font-semibold">Explore Movies</button>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4">
+                                <div className="grid grid-cols-2 gap-4 sm:gap-8 md:grid-cols-3 lg:grid-cols-4 pb-20">
                                     {watchlist.map(item => (
-                                        <div key={item.id} className="group relative rounded-2xl bg-slate-900/50 p-4 ring-1 ring-slate-800">
+                                        <div key={item.id} className="group relative rounded-2xl bg-slate-900/50 p-2 sm:p-4 ring-1 ring-slate-800">
                                             <img src={item.poster} className="aspect-[2/3] w-full rounded-xl object-cover" />
-                                            <div className="mt-4 flex items-center justify-between">
-                                                <h3 className="line-clamp-1 font-bold text-white">{item.title}</h3>
-                                                <button onClick={() => toggleWatchlist({ id: item.movieId })} className="text-xs text-red-400">Remove</button>
+                                            <div className="mt-3 flex items-center justify-between">
+                                                <h3 className="line-clamp-1 font-bold text-xs sm:text-sm text-white">{item.title}</h3>
+                                                <button onClick={() => toggleWatchlist({ id: item.movieId })} className="text-[10px] text-red-400">Remove</button>
                                             </div>
                                         </div>
                                     ))}
@@ -1011,20 +1021,20 @@ export default function App() {
                     )
                 }
 
-                {
+                        {
                     activeTab === 'profile' && (
-                        <div className="max-w-2xl space-y-8">
-                            <div className="flex items-center gap-6">
-                                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-indigo-600">
-                                    {user.photoURL ? <img src={user.photoURL} className="h-full w-full rounded-2xl" /> : <User className="h-10 w-10 text-white" />}
+                        <div className="max-w-2xl space-y-6 md:space-y-8">
+                            <div className="flex items-center gap-4 md:gap-6">
+                                <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-indigo-600 shrink-0">
+                                    {user.photoURL ? <img src={user.photoURL} className="h-full w-full rounded-2xl" /> : <User className="h-8 w-8 md:h-10 md:w-10 text-white" />}
                                 </div>
-                                <div>
-                                    <h2 className="text-2xl font-bold text-white">{userProfile.name} {user.isAnonymous && <span className="ml-2 text-xs text-slate-500">(Guest)</span>}</h2>
-                                    <p className="text-slate-500">{user.email || 'Anonymous Account'}</p>
+                                <div className="overflow-hidden">
+                                    <h2 className="text-xl md:text-2xl font-bold text-white truncate">{userProfile.name} {user.isAnonymous && <span className="ml-2 text-[10px] text-slate-500 font-normal">(Guest)</span>}</h2>
+                                    <p className="text-slate-500 text-sm md:text-base truncate">{user.email || 'Anonymous Account'}</p>
                                 </div>
                             </div>
 
-                            <div className="grid gap-6 rounded-3xl bg-slate-900/50 p-8 ring-1 ring-slate-800">
+                            <div className="grid gap-4 md:gap-6 rounded-2xl md:rounded-3xl bg-slate-900/50 p-6 md:p-8 ring-1 ring-slate-800">
                                 <section className="space-y-4">
                                     <h3 className="font-bold text-white">Favorite Genres</h3>
                                     <div className="flex flex-wrap gap-2">
@@ -1078,7 +1088,7 @@ export default function App() {
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md" onClick={() => setSelectedMovie(null)} />
 
-                        <div className={`relative w-full overflow-hidden rounded-[2.5rem] bg-slate-900 shadow-[0_0_100px_rgba(0,0,0,0.8)] ring-1 ring-white/10 flex flex-col md:flex-row min-h-[600px] transition-all duration-500 ${showTrailer ? 'max-w-7xl' : 'max-w-6xl'}`}>
+                        <div className={`relative w-full overflow-hidden rounded-t-[2.5rem] md:rounded-[2.5rem] bg-slate-900 shadow-[0_0_100px_rgba(0,0,0,0.8)] ring-1 ring-white/10 flex flex-col md:flex-row min-h-screen md:min-h-[600px] transition-all duration-500 overflow-y-auto md:overflow-hidden ${showTrailer ? 'max-w-7xl' : 'max-w-6xl'}`}>
                             {/* Backdrop Header (TMDB Style) */}
                             {selectedMovie.backdrop && (
                                 <div
@@ -1097,7 +1107,7 @@ export default function App() {
                             </button>
 
                             {/* Left Column: Poster / Trailer */}
-                            <div className="w-full md:w-1/3 p-8 lg:p-12 z-10 flex flex-col gap-6">
+                            <div className="w-full md:w-1/3 p-6 md:p-8 lg:p-12 z-10 flex flex-col gap-6">
                                 <div className="relative aspect-[2/3] w-full overflow-hidden rounded-3xl shadow-2xl ring-1 ring-white/10 group/poster-modal">
                                     <PosterImage src={selectedMovie.poster} alt={selectedMovie.title} className="h-full w-full object-cover" />
                                     {trailerKey && (
@@ -1127,7 +1137,7 @@ export default function App() {
                             </div>
 
                             {/* Right Column: Content */}
-                            <div className="flex-1 p-8 lg:p-12 z-10 overflow-y-auto max-h-[90vh] no-scrollbar transition-all duration-500">
+                            <div className="flex-1 p-6 md:p-8 lg:p-12 z-10 overflow-y-auto max-h-none md:max-h-[90vh] no-scrollbar transition-all duration-500">
                                 <div className="space-y-8">
                                     {/* Trailer Player (Support for multiple sites & Fallback) */}
                                     {showTrailer && (
@@ -1223,8 +1233,8 @@ export default function App() {
                                     {/* Header Info */}
                                     <div className="space-y-4">
                                         <div className="flex flex-wrap items-center gap-3">
-                                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white italic tracking-tighter uppercase leading-none">
-                                                {selectedMovie.title} <span className="text-slate-500 font-normal ml-2">({selectedMovie.year})</span>
+                                            <h2 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white italic tracking-tighter uppercase leading-tight">
+                                                {selectedMovie.title} <span className="text-slate-500 font-normal ml-1">({selectedMovie.year})</span>
                                             </h2>
                                         </div>
 
@@ -1289,13 +1299,12 @@ export default function App() {
                                         </div>
                                     </div>
 
-                                    {/* Credits */}
                                     {movieCredits && (
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 pt-4">
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8 pt-4">
                                             {movieCredits.crew?.filter(c => ['Director', 'Screenplay', 'Writer', 'Novel'].includes(c.job)).slice(0, 3).map(person => (
-                                                <div key={`${person.id}-${person.job}`} className="space-y-1">
-                                                    <p className="font-black text-white text-lg">{person.name}</p>
-                                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{person.job}</p>
+                                                <div key={`${person.id}-${person.job}`} className="space-y-0.5">
+                                                    <p className="font-black text-white text-base md:text-lg">{person.name}</p>
+                                                    <p className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-widest">{person.job}</p>
                                                 </div>
                                             ))}
                                         </div>
@@ -1632,23 +1641,23 @@ function Background({ showMarquee = false, marqueePosters = [] }) {
 }
 function HeroCard({ movie, onClick, onWatchTrailer }) {
     return (
-        <div className="group relative aspect-[21/9] w-full overflow-hidden rounded-[2.5rem] cursor-pointer ring-1 ring-white/10 shadow-2xl transition-all hover:scale-[1.01] hover:shadow-indigo-500/10 active:scale-100">
+        <div className="group relative aspect-video md:aspect-[21/9] w-full overflow-hidden rounded-[1.5rem] md:rounded-[2.5rem] cursor-pointer ring-1 ring-white/10 shadow-2xl transition-all hover:scale-[1.01] hover:shadow-indigo-500/10 active:scale-100">
             <div className="absolute inset-0 z-10 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" onClick={onClick} />
             {movie.backdrop && <img src={movie.backdrop.replace('w500', 'original')} className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-105" alt={movie.title} />}
 
-            <div className="absolute bottom-0 left-0 z-20 p-12 space-y-4 max-w-3xl pointer-events-none">
+            <div className="absolute bottom-0 left-0 z-20 p-6 md:p-12 space-y-2 md:space-y-4 max-w-3xl pointer-events-none">
                 <div className="flex items-center gap-3">
-                    <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest italic">Featured</span>
-                    <span className="flex items-center gap-1 text-yellow-500 font-bold"><Star className="h-4 w-4 fill-yellow-500" /> {movie.rating}</span>
-                    <span className="text-slate-400 font-bold">{movie.year}</span>
+                    <span className="bg-indigo-600 text-white px-2 py-0.5 md:px-3 md:py-1 rounded-full text-[10px] md:text-xs font-black uppercase tracking-widest italic">Featured</span>
+                    <span className="flex items-center gap-1 text-yellow-500 font-bold text-sm md:text-base"><Star className="h-3 w-3 md:h-4 md:w-4 fill-yellow-500" /> {movie.rating}</span>
+                    <span className="text-slate-400 font-bold text-sm md:text-base">{movie.year}</span>
                 </div>
-                <h1 className="text-6xl font-black text-white italic tracking-tighter uppercase leading-none">{movie.title}</h1>
-                <p className="text-slate-300 text-lg line-clamp-2 md:w-3/4 font-medium opacity-80">{movie.plot}</p>
-                <div className="flex gap-4 pt-4 pointer-events-auto">
-                    <button onClick={onWatchTrailer} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black tracking-tight uppercase hover:bg-indigo-500 transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20">
-                        <Play className="h-5 w-5 fill-current" /> Watch Trailer
+                <h1 className="text-2xl md:text-6xl font-black text-white italic tracking-tighter uppercase leading-tight">{movie.title}</h1>
+                <p className="hidden md:block text-slate-300 text-lg line-clamp-2 md:w-3/4 font-medium opacity-80">{movie.plot}</p>
+                <div className="flex gap-3 pt-2 md:pt-4 pointer-events-auto">
+                    <button onClick={onWatchTrailer} className="bg-indigo-600 text-white px-4 py-2 md:px-8 md:py-3 rounded-xl md:rounded-2xl text-xs md:font-black tracking-tight uppercase hover:bg-indigo-500 transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20 font-bold">
+                        <Play className="h-4 w-4 fill-current" /> Trailer
                     </button>
-                    <button onClick={onClick} className="glass-panel text-white px-8 py-3 rounded-2xl font-black tracking-tight uppercase hover:bg-white/10 transition-colors">Details</button>
+                    <button onClick={onClick} className="glass-panel text-white px-4 py-2 md:px-8 md:py-3 rounded-xl md:rounded-2xl text-xs md:font-black tracking-tight uppercase hover:bg-white/10 transition-colors font-bold">Info</button>
                 </div>
             </div>
         </div>
@@ -1770,5 +1779,16 @@ function MovieRow({ title, movies, onClick, isFavorite }) {
                 ))}
             </div>
         </div>
+    );
+}
+
+function MobileNavBtn({ icon, active, onClick }) {
+    return (
+        <button onClick={onClick} className={`flex flex-col items-center justify-center gap-1 p-2 transition-all ${active ? 'text-indigo-400' : 'text-slate-500'}`}>
+            <div className={`transition-all duration-300 ${active ? 'scale-110' : 'scale-100'}`}>
+                {icon}
+            </div>
+            {active && <div className="h-1 w-1 rounded-full bg-indigo-400" />}
+        </button>
     );
 }
