@@ -143,6 +143,8 @@ export default function App() {
     const [episodes, setEpisodes] = useState(null);
     const [isEpisodesLoading, setIsEpisodesLoading] = useState(false);
     const [allVideos, setAllVideos] = useState([]);
+    const [tamilMovies, setTamilMovies] = useState([]);
+    const [tamilSeries, setTamilSeries] = useState([]);
 
     // Email Auth States
     const [authMode, setAuthMode] = useState('landing'); // landing, login, register
@@ -203,9 +205,24 @@ export default function App() {
         mediaType: m.media_type || (m.first_air_date ? 'tv' : 'movie')
     });
 
+    const fetchTamilContent = async () => {
+        try {
+            const [moviesRes, seriesRes] = await Promise.all([
+                fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=ta&sort_by=popularity.desc`),
+                fetch(`${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_original_language=ta&sort_by=popularity.desc`)
+            ]);
+            const [moviesData, seriesData] = await Promise.all([moviesRes.json(), seriesRes.json()]);
+            setTamilMovies(moviesData.results.map(mapTMDBMovie));
+            setTamilSeries(seriesData.results.map(m => ({ ...mapTMDBMovie(m), mediaType: 'tv' })));
+        } catch (err) {
+            console.error("Failed to fetch Tamil content:", err);
+        }
+    };
+
     const fetchTrending = async (tab = activeTab) => {
         try {
             setIsDataLoading(true);
+            fetchTamilContent(); // Fetch Tamil content in parallel
             let allResults = [];
             
             if (tab === 'series') {
@@ -912,6 +929,12 @@ export default function App() {
                                 >
                                     All
                                 </button>
+                                <button
+                                    onClick={() => setSelectedGenre(selectedGenre === 'TAMIL' ? null : 'TAMIL')}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${selectedGenre === 'TAMIL' ? 'bg-indigo-600 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]' : 'bg-slate-900 text-slate-500 hover:text-slate-300 ring-1 ring-white/5'}`}
+                                >
+                                    Tamil Specials
+                                </button>
                                 {GENRES.map(g => (
                                     <button
                                         key={g}
@@ -937,7 +960,7 @@ export default function App() {
                         }
 
                         {
-                            !isDataLoading && !search && recommendations.length > 0 && (
+                            !isDataLoading && !search && !selectedGenre && recommendations.length > 0 && (
                                 <section className="space-y-8">
                                     <HeroCard
                                         movie={recommendations[0]}
@@ -963,10 +986,12 @@ export default function App() {
                             {search || selectedGenre ? (
                                 <div className="space-y-6">
                                     <h2 className="text-3xl font-black text-white italic tracking-tight underline decoration-slate-800 underline-offset-8">
-                                        {search ? `RESULTS FOR "${search}"` : `${selectedGenre.toUpperCase()} COLLECTIONS`}
+                                        {search ? `RESULTS FOR "${search}"` : (selectedGenre === 'TAMIL' ? `TAMIL CINEMA SPECIALS` : `${selectedGenre.toUpperCase()} COLLECTIONS`)}
                                     </h2>
                                     <div className="grid grid-cols-2 gap-4 sm:gap-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                                        {filteredMovies.map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
+                                        {(selectedGenre === 'TAMIL'
+                                            ? (activeTab === 'series' ? tamilSeries : tamilMovies)
+                                            : filteredMovies).map(m => <MovieCard key={m.id} movie={m} onClick={() => setSelectedMovie(m)} />)}
                                     </div>
                                 </div>
                             ) : (
@@ -977,6 +1002,24 @@ export default function App() {
                                         </h2>
                                         <p className="text-slate-500 text-sm font-medium">Curated collections spanning every genre in the multiverse.</p>
                                     </div>
+
+                                    {activeTab === 'discover' && tamilMovies.length > 0 && (
+                                        <MovieRow
+                                            title="🔥 Tamil Cinema (New)"
+                                            movies={tamilMovies}
+                                            onClick={setSelectedMovie}
+                                            isFavorite={true}
+                                        />
+                                    )}
+
+                                    {activeTab === 'series' && tamilSeries.length > 0 && (
+                                        <MovieRow
+                                            title="📺 Tamil Series (Latest)"
+                                            movies={tamilSeries}
+                                            onClick={setSelectedMovie}
+                                            isFavorite={true}
+                                        />
+                                    )}
 
                                     {Object.entries(moviesByCategory).map(([genre, items]) => (
                                         <MovieRow
